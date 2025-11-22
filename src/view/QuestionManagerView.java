@@ -23,7 +23,8 @@ public class QuestionManagerView extends JFrame {
     /* Controller reference for all CRUD actions */
     private final QuestionController controller;
 
-    
+    /* Table model that adapts Question objects to table rows/cols */
+    private /*final parametr*/ QuestionTableModel model;
     
     /* Swing table showing all questions */
     private /*final parametr*/ JTable table;
@@ -68,6 +69,39 @@ public class QuestionManagerView extends JFrame {
         top.add(back, BorderLayout.EAST);
         add(top, BorderLayout.NORTH);
 
+     // ===================== TABLE =====================
+
+        /* Create model from controller list */
+        model = new QuestionTableModel(controller.list());
+
+        /* Create table using the model */
+        table = new JTable(model);
+        table.setFillsViewportHeight(true);
+
+        /*  Put table in a scroll pane */
+        add(new JScrollPane(table), BorderLayout.CENTER);
+
+// ===================== BUTTONS BAR =====================
+
+        /* Bottom panel for actions */
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+        /* CRUD buttons */
+        JButton btnAdd = new JButton("Add");
+        JButton btnEdit = new JButton("Edit");
+        JButton btnDelete = new JButton("Delete");
+
+        buttons.add(btnAdd);
+        buttons.add(btnEdit);
+        buttons.add(btnDelete);
+
+        add(buttons, BorderLayout.SOUTH);
+
+        /* Wire buttons to handlers */
+        btnAdd.addActionListener(e -> onAdd());
+        btnEdit.addActionListener(e -> onEdit());
+        btnDelete.addActionListener(e -> onDelete());
+        
       pack();
         setLocationRelativeTo(null);
     }
@@ -77,4 +111,86 @@ public class QuestionManagerView extends JFrame {
     public void showSelf() {
         setVisible(true);
     }
+    
+
+    
+    
+    
+    
+ // ==================     TABLE MODEL     ===================
+
+    /**
+     * Internal table model used only by QuestionManagerView.
+     * Stores a local snapshot of Question list.
+     */
+    /* Full TableModel responsibility */
+    private static class QuestionTableModel extends AbstractTableModel {
+
+        /* Column names */
+        private final String[] cols = {
+                "ID", "Text", "Level",
+                "Opt1", "Opt2", "Opt3", "Opt4",
+                "Correct"
+        };
+
+        /* Data snapshot shown in the table */
+        private List<Question> data = new ArrayList<>();
+
+        /* Constructor loads initial snapshot */
+        QuestionTableModel(List<Question> initial) {
+            reload(initial);
+        }
+
+        /**
+         * Reloads the table data from a "fresh" controller list.
+         */
+        public void reload(List<Question> qs) {
+            data = new ArrayList<>(qs);
+            fireTableDataChanged();
+        }
+
+        /**
+         * Returns the question at a specific row.
+         */
+        public Question getAt(int row) {
+            return data.get(row);
+        }
+
+        @Override
+        public int getRowCount() {
+            return data.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return cols.length;
+        }
+
+        @Override
+        public String getColumnName(int c) {
+            return cols[c];
+        }
+
+        @Override
+        public Object getValueAt(int row, int col) {
+            Question q = data.get(row);
+            return switch (col) {
+                case 0 -> q.id();
+                case 1 -> q.text();
+                case 2 -> q.level().name();
+                case 3 -> q.options().get(0);
+                case 4 -> q.options().get(1);
+                case 5 -> q.options().get(2);
+                case 6 -> q.options().get(3);
+                case 7 -> q.correctIndex();
+                default -> "";
+            };
+        }
+
+        @Override
+        public boolean isCellEditable(int r, int c) {
+            return false; // table is read-only
+        }
+    }
 }
+
