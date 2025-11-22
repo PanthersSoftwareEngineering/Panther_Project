@@ -1,30 +1,34 @@
 package controller;
 
 import javax.swing.SwingUtilities;
+import model.*;
+import view.StartListener;
 
-/*import model.*;
-import view.StartListener;*/
+/**
+ * Central application controller (Singleton).
+ * Responsible for navigation between screens
+ * and for starting new matches 
+ */
+public class AppController {
 
-public class AppController /*implements StartListener*/ {
-
-    // [Iter2] – תשתית Singleton כללית לבקר הראשי
     private static AppController INSTANCE;
+
     public static synchronized AppController getInstance(){
         if (INSTANCE == null) INSTANCE = new AppController();
         return INSTANCE;
     }
 
-    // [Iter2] – ctor פרטי של ה-Singleton
-    private AppController(){}
+    private AppController(){} 
 
-
-
-    // [Iter1 - Maor] – הצגת התפריט הראשי (Main Menu)
+    private final SysData sys = SysData.getInstance();
+    
+    public void openQuestionManager(){
+        QuestionController qc = QuestionController.getInstance(sys);
+        new view.QuestionManagerView(qc).showSelf();
+    }
+    
     public void showMainMenu(){
         SwingUtilities.invokeLater(() -> new view.MainMenuView(this).showSelf());
     }
-
-
-
 
 }
