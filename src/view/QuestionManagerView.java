@@ -112,7 +112,203 @@ public class QuestionManagerView extends JFrame {
         setVisible(true);
     }
     
+ // =================    CRUD HANDLERS     ==================
 
+    /**
+     * Add handler:
+     * Opens the editor dialog in Add mode (original = null).
+     * If user confirms, adds question through controller and reloads table.
+     */
+    /* Add flow */
+    private void onAdd() {
+        Question q = showEditorDialog(null);
+        if (q != null) {
+            controller.add(q);
+            model.reload(controller.list());
+        }
+    }
+
+    /**
+     * Edit handler:
+     * Requires a row selection.
+     * Opens editor dialog with existing question values pre-filled.
+     * On confirm, replaces old question with updated one via controller.
+     */
+    /* Edit flow */
+    private void onEdit() {
+        int row = table.getSelectedRow();
+
+        /* Validation: must select a row */
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a row to edit.");
+            return;
+        }
+
+        /* Get the selected question */
+        Question selected = model.getAt(row);
+
+        /* Open dialog with existing data */
+        Question updated = showEditorDialog(selected);
+
+        /* Replace if user confirmed */
+        if (updated != null) {
+            controller.replace(selected.id(), updated);
+            model.reload(controller.list());
+        }
+    }
+
+    /**
+     * Delete handler:
+     * Requires a row selection and a confirmation dialog.
+     * Controller enforces MIN_QUESTIONS limit through SysData.
+     */
+    /* Delete flow */
+    private void onDelete() {
+        int row = table.getSelectedRow();
+
+        /* Validation: must select a row */
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a row to delete.");
+            return;
+        }
+
+        Question selected = model.getAt(row);
+
+        /* Ask confirmation */
+        int ok = JOptionPane.showConfirmDialog(
+                this,
+                "Delete question: " + selected.id() + " ?",
+                "Confirm",
+                JOptionPane.OK_CANCEL_OPTION
+        );
+
+        if (ok == JOptionPane.OK_OPTION) {
+            boolean removed = controller.delete(selected.id());
+
+            /* If delete failed, explain MIN_QUESTIONS restriction */
+            if (!removed) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Cannot delete. System must keep at least 20 questions.",
+                        "Delete Blocked",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+
+            model.reload(controller.list());
+        }
+    }
+
+    // ==========================================================
+    //                MODAL EDITOR DIALOG
+    // ==========================================================
+
+    /**
+     * Opens a modal dialog for adding or editing a question.
+     *
+     * @param original existing Question to edit, or null for Add mode.
+     * @return a newly built Question object, or null if user cancelled.
+     */
+    /* Dialog creation + validation logic */
+    private Question showEditorDialog(Question original) {
+
+        // ---------- Fields ----------
+        /* ID input. If Add mode, suggest next numeric ID */
+        String suggestedId = (original == null)
+                ? String.valueOf(controller.nextId())
+                : original.id();
+        JTextField tfId = new JTextField(suggestedId, 20);
+
+        /*  Question text input */
+        JTextField tfText = new JTextField(
+                original == null ? "" : original.text(), 30
+        );
+
+        /* Difficulty dropdown (QuestionLevel) */
+        JComboBox<String> cbLevel =
+                new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD", "MASTER"});
+        if (original != null)
+            cbLevel.setSelectedItem(original.level().name());
+
+        /* Options inputs */
+        JTextField tfOpt1 = new JTextField(original == null ? "" : original.options().get(0), 20);
+        JTextField tfOpt2 = new JTextField(original == null ? "" : original.options().get(1), 20);
+        JTextField tfOpt3 = new JTextField(original == null ? "" : original.options().get(2), 20);
+        JTextField tfOpt4 = new JTextField(original == null ? "" : original.options().get(3), 20);
+
+        /* Correct index picker 0..3 */
+        SpinnerNumberModel snm = new SpinnerNumberModel(
+                original == null ? 0 : original.correctIndex(),
+                0, 3, 1
+        );
+        JSpinner spCorrect = new JSpinner(snm);
+
+        // ---------- Dialog layout ----------
+        /* Use a simple 2-column grid */
+        JPanel p = new JPanel(new GridLayout(0, 2, 6, 6));
+        p.add(new JLabel("ID:"));                   p.add(tfId);
+        p.add(new JLabel("Text:"));                 p.add(tfText);
+        p.add(new JLabel("Level:"));                p.add(cbLevel);
+        p.add(new JLabel("Option 1:"));             p.add(tfOpt1);
+        p.add(new JLabel("Option 2:"));             p.add(tfOpt2);
+        p.add(new JLabel("Option 3:"));             p.add(tfOpt3);
+        p.add(new JLabel("Option 4:"));             p.add(tfOpt4);
+        p.add(new JLabel("Correct Index [0..3]:")); p.add(spCorrect);
+
+        /* Show modal confirm dialog */
+        int res = JOptionPane.showConfirmDialog(
+                this,
+                p,
+                (original == null ? "Add Question" : "Edit Question"),
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (res != JOptionPane.OK_OPTION)
+            return null; // user cancelled
+
+        // ---------- Read values ----------
+        String id = tfId.getText().trim();
+        String text = tfText.getText().trim();
+        String lvlS = cbLevel.getSelectedItem().toString();
+        int correct = (Integer) spCorrect.getValue();
+
+        // ---------- Validation ----------
+        /* Validate required fields */
+        if (id.isEmpty() || text.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "ID and Text must not be empty.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        /* Validate correct index range */
+        if (correct < 0 || correct > 3) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Correct index must be between 0 and 3.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        /* Build options list */
+        List<String> opts = new ArrayList<>(4);
+        opts.add(tfOpt1.getText());
+        opts.add(tfOpt2.getText());
+        opts.add(tfOpt3.getText());
+        opts.add(tfOpt4.getText());
+
+        /* Convert to enum */
+        QuestionLevel lvl = QuestionLevel.valueOf(lvlS);
+
+        /* Build and return model object */
+        return new Question(id, text, opts, correct, lvl);
+    }
     
     
     
@@ -144,8 +340,21 @@ public class QuestionManagerView extends JFrame {
         /**
          * Reloads the table data from a "fresh" controller list.
          */
-        public void reload(List<Question> qs) {
+        public void reload(List<Question> qs){
             data = new ArrayList<>(qs);
+
+            // ----- SORT BY NUMERIC ID ASC -----
+            data.sort((a, b) -> {
+                try {
+                    int idA = Integer.parseInt(a.id());
+                    int idB = Integer.parseInt(b.id());
+                    return Integer.compare(idA, idB);
+                } catch (NumberFormatException e) {
+                    // fallback to string compare
+                    return a.id().compareTo(b.id());
+                }
+            });
+
             fireTableDataChanged();
         }
 
