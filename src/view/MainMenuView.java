@@ -9,7 +9,7 @@ public class MainMenuView extends JFrame {
 
     private final AppController app;
 
-    public MainMenuView(AppController app){
+    public MainMenuView(AppController app) {
         super("Minesweeper - Main");
         this.app = app;
 
@@ -30,6 +30,7 @@ public class MainMenuView extends JFrame {
 
         setContentPane(p);
 
+        // Start game – not implemented yet
         start.addActionListener(e ->
                 JOptionPane.showMessageDialog(
                         this,
@@ -39,6 +40,7 @@ public class MainMenuView extends JFrame {
                 )
         );
 
+        // History – not implemented yet
         history.addActionListener(e ->
                 JOptionPane.showMessageDialog(
                         this,
@@ -48,10 +50,19 @@ public class MainMenuView extends JFrame {
                 )
         );
 
-        // TODO – qman ו-exit עדיין בלי מאזינים אבל זה לא טעות בקוד עצמו
-    }  // ←←← כאן חסר הסוגר בקוד שלך!
+        // Question Management – close menu and open question manager
+        qman.addActionListener(e -> {
+            dispose();
+            app.openQuestionManager();
+        });
 
-    public void showSelf(){
+        // Exit – just close this window
+        exit.addActionListener(e -> dispose());
+
+        pack();
+    }
+
+    public void showSelf() {
         setLocationRelativeTo(null);
         setVisible(true);
     }
