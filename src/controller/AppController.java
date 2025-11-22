@@ -22,6 +22,11 @@ public class AppController {
 
     private final SysData sys = SysData.getInstance();
     
+    public void openQuestionManager(){
+        QuestionController qc = QuestionController.getInstance(sys);
+        new view.QuestionManagerView(qc).showSelf();
+    }
+    
     public void showMainMenu(){
         SwingUtilities.invokeLater(() -> new view.MainMenuView(this).showSelf());
     }
