@@ -26,7 +26,24 @@ public class SysData {
     private SysData() { loadQuestions(); }
 
     /* Questions CSV file (new comma format) */
-    private static final Path QUESTIONS_CSV = Paths.get("questions.csv");
+    private static Path questionsPath() {
+        try {
+            // folder that contains the running jar (or class files in IDE)
+            Path jarDir = Paths.get(
+                    SysData.class.getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI()
+            ).getParent();
+
+            return jarDir.resolve("questions.csv");
+
+        } catch (Exception e) {
+            // fallback: current working directory
+            return Paths.get("questions.csv");
+        }
+    }
+
 
     /* Minimum number of questions allowed in system */
     private static final int MIN_QUESTIONS = 20;
@@ -127,7 +144,9 @@ public class SysData {
 
     /* Load questions from CSV */
     private void loadQuestions(){
+
         questions.clear();
+        Path QUESTIONS_CSV = questionsPath();
         if(!Files.exists(QUESTIONS_CSV)) return;
 
         try(BufferedReader br = Files.newBufferedReader(QUESTIONS_CSV, StandardCharsets.UTF_8)){
@@ -187,6 +206,7 @@ public class SysData {
 
     /* Save all questions to CSV (overwrite) */
     private void saveAllQuestions(){
+    	Path QUESTIONS_CSV = questionsPath();
         try(BufferedWriter bw = Files.newBufferedWriter(QUESTIONS_CSV, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)){
 
