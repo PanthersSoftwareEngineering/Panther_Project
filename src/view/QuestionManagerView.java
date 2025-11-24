@@ -213,38 +213,36 @@ public class QuestionManagerView extends JFrame {
     private Question showEditorDialog(Question original) {
 
         // ---------- Fields ----------
-        /* ID input. If Add mode, suggest next numeric ID */
+
+        /* Auto-ID: use nextQuestionId() when adding */
         String suggestedId = (original == null)
                 ? String.valueOf(controller.nextId())
                 : original.id();
-        JTextField tfId = new JTextField(suggestedId, 20);
 
-        /*  Question text input */
+        JTextField tfId = new JTextField(suggestedId, 20);
+        tfId.setEditable(false);                   // 🔥 ID is auto-generated and locked
+
         JTextField tfText = new JTextField(
                 original == null ? "" : original.text(), 30
         );
 
-        /* Difficulty dropdown (QuestionLevel) */
         JComboBox<String> cbLevel =
                 new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD", "MASTER"});
         if (original != null)
             cbLevel.setSelectedItem(original.level().name());
 
-        /* Options inputs */
         JTextField tfOpt1 = new JTextField(original == null ? "" : original.options().get(0), 20);
         JTextField tfOpt2 = new JTextField(original == null ? "" : original.options().get(1), 20);
         JTextField tfOpt3 = new JTextField(original == null ? "" : original.options().get(2), 20);
         JTextField tfOpt4 = new JTextField(original == null ? "" : original.options().get(3), 20);
 
-        /* Correct index picker 0..3 */
         SpinnerNumberModel snm = new SpinnerNumberModel(
                 original == null ? 0 : original.correctIndex(),
                 0, 3, 1
         );
         JSpinner spCorrect = new JSpinner(snm);
 
-        // ---------- Dialog layout ----------
-        /* Use a simple 2-column grid */
+        // ---------- Layout ----------
         JPanel p = new JPanel(new GridLayout(0, 2, 6, 6));
         p.add(new JLabel("ID:"));                   p.add(tfId);
         p.add(new JLabel("Text:"));                 p.add(tfText);
@@ -255,37 +253,39 @@ public class QuestionManagerView extends JFrame {
         p.add(new JLabel("Option 4:"));             p.add(tfOpt4);
         p.add(new JLabel("Correct Index [0..3]:")); p.add(spCorrect);
 
-        /* Show modal confirm dialog */
         int res = JOptionPane.showConfirmDialog(
-                this,
-                p,
+                this, p,
                 (original == null ? "Add Question" : "Edit Question"),
                 JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE
         );
 
         if (res != JOptionPane.OK_OPTION)
-            return null; // user cancelled
+            return null;
 
-        // ---------- Read values ----------
+        // ---------- Read fields ----------
         String id = tfId.getText().trim();
         String text = tfText.getText().trim();
         String lvlS = cbLevel.getSelectedItem().toString();
         int correct = (Integer) spCorrect.getValue();
 
-        // ---------- Validation ----------
-        /* Validate required fields */
-        if (id.isEmpty() || text.isEmpty()) {
+        // ---------- VALIDATION (new improved) ----------
+        if (text.isEmpty()
+                || tfOpt1.getText().trim().isEmpty()
+                || tfOpt2.getText().trim().isEmpty()
+                || tfOpt3.getText().trim().isEmpty()
+                || tfOpt4.getText().trim().isEmpty()
+        ) {
             JOptionPane.showMessageDialog(
                     this,
-                    "ID and Text must not be empty.",
+                    "All fields (Text and all 4 options) must be filled.",
                     "Validation Error",
                     JOptionPane.WARNING_MESSAGE
             );
             return null;
         }
 
-        /* Validate correct index range */
+        // Correct index check (safety)
         if (correct < 0 || correct > 3) {
             JOptionPane.showMessageDialog(
                     this,
@@ -296,19 +296,18 @@ public class QuestionManagerView extends JFrame {
             return null;
         }
 
-        /* Build options list */
+        // ---------- Build Question ----------
         List<String> opts = new ArrayList<>(4);
         opts.add(tfOpt1.getText());
         opts.add(tfOpt2.getText());
         opts.add(tfOpt3.getText());
         opts.add(tfOpt4.getText());
 
-        /* Convert to enum */
         QuestionLevel lvl = QuestionLevel.valueOf(lvlS);
 
-        /* Build and return model object */
         return new Question(id, text, opts, correct, lvl);
     }
+
     
     
     
