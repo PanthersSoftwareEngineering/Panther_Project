@@ -242,4 +242,20 @@ public class SysData {
             e.printStackTrace();
         }
     }
+    
+    // ---------- GameRecord ----------
+    public static class GameRecord {
+        public final String p1,p2;
+        public final DifficultyLevel level;
+        public final int hearts, points;
+        public final boolean won;
+        public final long timeSec;
+        public final long timestamp;
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec){
+            this(p1,p2,lvl,hearts,points,won,timeSec,System.currentTimeMillis());
+        }
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec,long ts){
+            this.p1=p1; this.p2=p2; this.level=lvl; this.hearts=hearts; this.points=points; this.won=won; this.timeSec=timeSec; this.timestamp=ts;
+        }
+    }
 }
