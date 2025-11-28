@@ -12,15 +12,17 @@ import view.StartListener;
 public class AppController {
 
     private static AppController INSTANCE;
+    private final SysData sys;
 
     public static synchronized AppController getInstance(){
         if (INSTANCE == null) INSTANCE = new AppController();
         return INSTANCE;
     }
 
-    private AppController(){} 
+    private AppController(){
+    	sys = SysData.getInstance();
+    } 
 
-    private final SysData sys = SysData.getInstance();
     
     public void openQuestionManager(){
         QuestionController qc = QuestionController.getInstance(sys);

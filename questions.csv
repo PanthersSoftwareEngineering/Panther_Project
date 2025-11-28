@@ -1,0 +1,21 @@
+ID,Question,Difficulty,A,B,C,D,CorrectAnswer
+1,What does Verification check?,1,Building product right,UI design,Testing only,Building right product,A
+2,Which UML diagram shows system structure?,1,Class diagram,Activity diagram,Sequence diagram,State diagram,A
+3,"In reviews, what is inspected?",1,Work product,Budget,Timeline,Contracts,A
+4,What is the Requirements Phase output?,1,Requirements document,Architecture,Source code,Test cases,A
+5,What is Model component in MVC?,1,Manages data,Shows UI,Stores logs,Handles clicks,A
+6,What does a Use Case represent?,2,Deployment units,Database schema,Class attributes,Interaction task,D
+7,What is a Design Review?,2,Client demo,Testing integration,Review architecture,Budget review,C
+8,Which activity belongs to Implementation phase?,2,Creating context diagram,Desk checking,Creating CIM,Setting boundaries,B
+9,What is the Controller's job in MVC?,2,Store data,Render UI,Handle user input,Test modules,C
+10,What does Traceability ensure?,2,Improving UI,Hardware setup,Linking reqs to design/tests,Scheduling tasks,C
+11,What is the focus of Architectural Design?,3,Bug fixing,Coding style,UI colors,Principal design decisions,D
+12,Which model shows system dynamics?,3,Context diagram,Use case,Class diagram,State diagram,D
+14,What is SQA filtering effectiveness?,3,Lines of code,Memory usage,Defects removed by activity,Team productivity,C
+15,What is a key disadvantage of Layered Architecture?,3,No documentation,No security,No modularity,Performance overhead,D
+16,What is Architectural Erosion?,4,Refactoring only,Code duplication,Minor change,Violating prescriptive architecture,D
+17,"In Reviews, why avoid resolving defects?",4,Save money,Speed coding,Avoid documentation,Focus on detection,D
+18,What is purpose of State Machine models?,4,Show class relations,Model event-based transitions,Describe databases,Show UI layouts,B
+19,What is Qualification in IEEE terms?,4,Check operational suitability,Check UI layout,Check costs,Check design,A
+20,Why is MDA limited in industry?,4,Tooling costs,No diagrams,Too simple,No modeling needed,A
+13,Why are Specifications a legal document?,1,Define hardware only,List team roles,Add UI rules,Avoid ambiguity,D
