@@ -113,6 +113,225 @@ public class MatchController {
         return g;
     }
     
+    // ======================== Actions ========================
+
+    public void reveal(int row,int col){
+        Board b = match.boardOfActive();
+        Cell  cell = b.cell(row,col);
+        if (cell.isRevealed()) return;
+
+        int playerIdx = match.activeIndex();
+
+        if (cell instanceof EmptyCell) {
+            floodReveal(b, playerIdx, row, col);
+        } else {
+            cell.reveal();
+            applyRevealScoring(cell);
+
+            if (cell instanceof QuestionCell)
+                addPending(playerIdx, new Key(row,col,true));
+            else if (cell instanceof SurpriseCell)
+                addPending(playerIdx, new Key(row,col,false));
+        }
+
+        match.checkFinish();
+        if (match.isFinished()) {
+            //finishAndClose();//add in future
+            return;
+        }
+
+        endTurn();
+    }
+
+    /**
+     * Tries to interact with a pending Question/SURPRISE cell.
+     * For QuestionCell – pulls a random Question from SysData (any level),
+     * and applies scoring based on game difficulty + question level
+     * according to the design table.
+     */
+    public boolean tryInteract(int playerIdx,int row,int col){
+        if (playerIdx != match.activeIndex()) return false;
+
+        Set<Key> pend = pendSet(playerIdx);
+        Key qKey = new Key(row,col,true);
+        Key sKey = new Key(row,col,false);
+
+        Board b = (playerIdx==0)? match.board1() : match.board2();
+        Cell  cell = b.cell(row,col);
+
+        // ----- Question cell -----
+        if (pend.contains(qKey) && cell instanceof QuestionCell){
+
+            Question      q = sys.drawRandomQuestion();
+            boolean       right;
+            QuestionLevel qLevel;
+
+            if (q == null){
+                // אין שאלות – מתייחסים כאילו ענה נכון על שאלה קלה
+                lastSurpriseMessage = "No questions in bank. Counted as correct.";
+                right  = true;
+                qLevel = QuestionLevel.EASY;
+
+            } else {
+                QuestionDTO dto = new QuestionDTO(
+                        q.id(), q.text(), q.options(), q.level().name()
+                );
+
+                if (questionUI != null){
+                    int choice = questionUI.ask(dto);
+
+                    // ====== זה החלק החדש ======
+                    // cancel (או סגירת חלון) → לא לענות, לא לשנות תור
+                    if (choice < 0){
+                        // משאירים את התא כ-pending לאותו שחקן
+                        return false;
+                    }
+                    // ==========================
+
+                    right  = (choice == q.correctIndex());
+                    qLevel = q.level();
+                } else {
+                    // אין UI – נניח תשובה נכונה (אפשר לשנות לפי הצורך)
+                    right  = true;
+                    qLevel = q.level();
+                }
+            }
+
+            // אפקט מלא לפי הטבלה (נקודות + לבבות + בונוסים)
+            DifficultyLevel diff = match.level();
+            QuestionEffect eff = computeQuestionEffect(diff, qLevel, right);
+
+            match.addPoints(eff.pointsDelta);
+            match.addLives (eff.livesDelta);
+
+            if (eff.revealMineBonus){
+                //revealRandomMineBonus(b, playerIdx);//implement later
+            }
+            if (eff.revealAreaBonus){
+                //revealRandom3x3Bonus(b, playerIdx);//implement later
+            }
+
+            // השאלה טופלה – מסירים מה-pending
+            pend.remove(qKey);
+
+        // ----- Surprise cell -----
+        } else if (pend.contains(sKey) && cell instanceof SurpriseCell sc){
+            if (sc.isRevealed() && !sc.wasOperated()){
+                sc.operate();
+                boolean good = rnd.nextBoolean();
+                int delta = good ? +5 : -5;
+                match.addPoints(delta);
+                lastSurpriseMessage = good
+                        ? "🎁 Good surprise! +5 points"
+                        : "🎁 Bad surprise! -5 points";
+            }
+            pend.remove(sKey);
+
+        } else {
+            return false;
+        }
+
+        // אחרי אינטראקציה *אמיתית* (לא cancel) – בודקים סוף משחק וסיום תור
+        match.checkFinish();
+        if (match.isFinished()) {
+        	//finishAndClose();//add in future
+            return true;
+        }
+
+        endTurn();
+        return true;
+    }
+ // ======================== Helpers ========================
+
+    public String consumeLastSurpriseMessage(){
+        String s = lastSurpriseMessage;
+        lastSurpriseMessage = null;
+        return s;
+    }
+
+    private void endTurn(){
+        match.endTurn();
+    }
+
+    private Set<Key> pendSet(int idx){
+        return idx==0 ? pendingP1 : pendingP2;
+    }
+
+    private void addPending(int idx, Key k){
+        pendSet(idx).add(k);
+    }
+
+    /** Basic scoring for reveal (לא קשור לטבלת השאלות) */
+    private void applyRevealScoring(Cell cell){
+        switch(cell.type()){
+            case MINE -> match.addLives(-1);
+            default   -> match.addPoints(+1);
+        }
+    }
+
+    private void applyFlagScoring(Cell cell, boolean nowFlagged){
+        switch(cell.type()){
+            case MINE -> match.addPoints(nowFlagged? +1 : -1);
+            default   -> match.addPoints(nowFlagged? -3 : +3);
+        }
+    }
+
+
+ 
+
+    // ======================== Flood ========================
+
+    private void floodReveal(Board b,int playerIdx,int sr,int sc){
+        int R = b.rows(), C = b.cols();
+        boolean[][] seen = new boolean[R][C];
+        ArrayDeque<int[]> q = new ArrayDeque<>();
+
+        q.add(new int[]{sr,sc});
+        seen[sr][sc] = true;
+
+        while(!q.isEmpty()){
+            int[] cur = q.poll();
+            int r = cur[0], c = cur[1];
+            Cell cell = b.cell(r,c);
+
+            if (cell.isRevealed()) continue;
+
+            cell.reveal();
+            applyRevealScoring(cell);
+
+            // אם זו שאלה – מסמנים כ-pending אבל לא עוצרים את ההצפה
+            if (cell instanceof QuestionCell){
+                addPending(playerIdx,new Key(r,c,true));
+            }
+
+            // אם זו תחנת הפתעה – גם מוסיפים כ-pending אבל ממשיכים להתרחב
+            if (cell instanceof SurpriseCell){
+                addPending(playerIdx,new Key(r,c,false));
+            }
+
+            // מספרים לא מרחיבים הלאה (כמו בשולה מוקשים רגיל)
+            if (cell instanceof NumberCell) {
+                continue;
+            }
+
+            // מוקש לעולם לא ניכנס אליו בהצפה (בגלל בדיקה למטה),
+            // אבל אם איכשהו הגענו – לא נרחיב ממנו.
+            if (cell instanceof MineCell) {
+                continue;
+            }
+
+            // מרחיבים לשכנים עבור תאים ריקים + שאלות + הפתעות (אבל לא מוקשים)
+            for(int k=0;k<8;k++){
+                int nr = r + DR[k], nc = c + DC[k];
+                if(nr<0 || nr>=R || nc<0 || nc>=C) continue;
+                if(seen[nr][nc]) continue;
+                if(b.cell(nr,nc) instanceof MineCell) continue;
+                seen[nr][nc] = true;
+                q.add(new int[]{nr,nc});
+            }
+        }
+    }
+
     // ======================== Question scoring (from table) ========================
 
     /**
