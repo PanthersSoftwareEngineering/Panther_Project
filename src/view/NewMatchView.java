@@ -10,15 +10,19 @@ import controller.AppController;
  * Lets the user enter player names and choose a difficulty level.
  */
 public class NewMatchView extends JFrame {
-    /** Text field for player 1 name. */
-    private final JTextField p1 = new JTextField("Player A",12);
 
-    /** Text field for player 2 name. */
-    private final JTextField p2 = new JTextField("Player B",12);
+    // Placeholder for difficulty selection
+    private static final String PLACEHOLDER_DIFF = "Select difficulty";
 
-    /** Combo box for difficulty selection. */
+    /** Text field for player 1 name (starts empty). */
+    private final JTextField p1 = new JTextField(12);
+
+    /** Text field for player 2 name (starts empty). */
+    private final JTextField p2 = new JTextField(12);
+
+    /** Combo box for difficulty selection (starts with placeholder). */
     private final JComboBox<String> diff =
-            new JComboBox<>(new String[]{"EASY","MEDIUM","HARD"});
+            new JComboBox<>(new String[]{PLACEHOLDER_DIFF, "EASY", "MEDIUM", "HARD"});
 
     /**
      * Creates the "New Match" window and wires its UI to the AppController.
@@ -27,7 +31,7 @@ public class NewMatchView extends JFrame {
         super("New Match");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        JPanel root = new JPanel(new FlowLayout(FlowLayout.LEFT,10,10));
+        JPanel root = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         JButton back  = new JButton("Back");
         JButton start = new JButton("Start");
 
@@ -38,27 +42,50 @@ public class NewMatchView extends JFrame {
         root.add(start);                      root.add(back);
         setContentPane(root);
 
-        // When "Start" is clicked, validate names and only then start the game.
+        // Explicitly select the placeholder difficulty
+        diff.setSelectedItem(PLACEHOLDER_DIFF);
+
+        // When "Start" is clicked, validate names and difficulty before starting the game.
         start.addActionListener(e -> {
             String name1 = p1.getText().trim();
             String name2 = p2.getText().trim();
+            String level = (String) diff.getSelectedItem();
 
-            // Require both player names
+            // 1. Both names must be non-empty
             if (name1.isEmpty() || name2.isEmpty()) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Please enter names for both players.",
+                        "Both player names must be filled in (they cannot be empty).",
                         "Missing Player Name",
                         JOptionPane.WARNING_MESSAGE
                 );
-                return; // do not start the game
+                return;
             }
 
-            app.onStart(
-                    name1,
-                    name2,
-                    (String)diff.getSelectedItem()
-            );
+            // 2. Names must be different
+            if (name1.equalsIgnoreCase(name2)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player names must be different.\nPlease choose two different names.",
+                        "Duplicate Player Names",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // 3. Difficulty must be selected (not the placeholder)
+            if (level == null || PLACEHOLDER_DIFF.equals(level)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Please choose a difficulty level before starting the game.",
+                        "Difficulty Not Selected",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // All validations passed → start the game
+            app.onStart(name1, name2, level);
             dispose();
         });
 
