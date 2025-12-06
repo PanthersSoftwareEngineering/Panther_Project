@@ -2,6 +2,7 @@ package controller;
 
 import java.util.*;
 
+
 import model.*;
 import view.QuestionDTO;
 import view.QuestionUI;
@@ -112,5 +113,156 @@ public class MatchController {
         return g;
     }
     
+    // ======================== Question scoring (from table) ========================
 
+    /**
+     * מחזירה את כל האפקט של שאלה:
+     *  - שינוי נקודות
+     *  - שינוי לבבות
+     *  - בונוסים של חשיפת מוקש / 3x3 (ללא ניקוד/לב)
+     *
+     * ממומש אחד-לא-אחד לפי הטבלה.
+     */
+    private QuestionEffect computeQuestionEffect(DifficultyLevel diff,
+                                                 QuestionLevel ql,
+                                                 boolean right){
+        switch (diff){
+            case EASY:
+                switch (ql){
+                    case EASY:
+                        if (right) {
+                            // (+3pts) AND (+1life)
+                            return new QuestionEffect(+3, +1, false, false);
+                        } else {
+                            // (-3pts) OR nothing
+                            boolean punish = rnd.nextBoolean();
+                            return punish
+                                    ? new QuestionEffect(-3, 0, false, false)
+                                    : new QuestionEffect(0, 0, false, false);
+                        }
+
+                    case MEDIUM:
+                        if (right) {
+                            // (+6pts) AND חשיפת משבצת מוקש (ללא ניקוד על החשיפה)
+                            return new QuestionEffect(+6, 0, true, false);
+                        } else {
+                            // (-6pts) OR nothing
+                            boolean punish = rnd.nextBoolean();
+                            return punish
+                                    ? new QuestionEffect(-6, 0, false, false)
+                                    : new QuestionEffect(0, 0, false, false);
+                        }
+
+                    case HARD:
+                        if (right) {
+                            // (+10pts) AND חשיפת 3x3 (ללא ניקוד/לב)
+                            return new QuestionEffect(+10, 0, false, true);
+                        } else {
+                            // -10pts
+                            return new QuestionEffect(-10, 0, false, false);
+                        }
+
+                    case MASTER:
+                        if (right) {
+                            // (+15pts) AND (+1life)
+                            return new QuestionEffect(+15, +1, false, false);
+                        } else {
+                            // (-15pts) AND (-1life)
+                            return new QuestionEffect(-15, -1, false, false);
+                        }
+                }
+                break;
+
+            case MEDIUM:
+                switch (ql){
+                    case EASY:
+                        if (right) {
+                            // (+8pts) AND (+1life)
+                            return new QuestionEffect(+8, +1, false, false);
+                        } else {
+                            // (-8pts)
+                            return new QuestionEffect(-8, 0, false, false);
+                        }
+
+                    case MEDIUM:
+                        if (right) {
+                            // (+10pts) AND (+1life)
+                            return new QuestionEffect(+10, +1, false, false);
+                        } else {
+                            // ((-10pts) AND (-1life)) OR nothing
+                            boolean punish = rnd.nextBoolean();
+                            if (punish){
+                                return new QuestionEffect(-10, -1, false, false);
+                            } else {
+                                return new QuestionEffect(0, 0, false, false);
+                            }
+                        }
+
+                    case HARD:
+                        if (right) {
+                            // (+15pts) AND (+1life)
+                            return new QuestionEffect(+15, +1, false, false);
+                        } else {
+                            // (-15pts) AND (-1life)
+                            return new QuestionEffect(-15, -1, false, false);
+                        }
+
+                    case MASTER:
+                        if (right) {
+                            // (+20pts) AND (+2lives)
+                            return new QuestionEffect(+20, +2, false, false);
+                        } else {
+                            // ((-20pts) AND (-1life)) OR ((-20pts) AND (-2lives))
+                            boolean oneOrTwo = rnd.nextBoolean();
+                            return new QuestionEffect(-20, oneOrTwo ? -1 : -2, false, false);
+                        }
+                }
+                break;
+
+            case HARD:
+                switch (ql){
+                    case EASY:
+                        if (right) {
+                            // (+10pts) AND (+1life)
+                            return new QuestionEffect(+10, +1, false, false);
+                        } else {
+                            // (-10pts) AND (-1life)
+                            return new QuestionEffect(-10, -1, false, false);
+                        }
+
+                    case MEDIUM:
+                        if (right) {
+                            // ((+15pts) AND (+1life)) OR ((+15pts) AND (+2lives))
+                            boolean oneOrTwo = rnd.nextBoolean();
+                            return new QuestionEffect(+15, oneOrTwo ? +1 : +2, false, false);
+                        } else {
+                            // ((-15pts) AND (-1life)) OR ((-15pts) AND (-2lives))
+                            boolean oneOrTwo = rnd.nextBoolean();
+                            return new QuestionEffect(-15, oneOrTwo ? -1 : -2, false, false);
+                        }
+
+                    case HARD:
+                        if (right) {
+                            // (+20pts) AND (+2lives)
+                            return new QuestionEffect(+20, +2, false, false);
+                        } else {
+                            // (-20pts) AND (-2lives)
+                            return new QuestionEffect(-20, -2, false, false);
+                        }
+
+                    case MASTER:
+                        if (right) {
+                            // (+40pts) AND (+3lives)
+                            return new QuestionEffect(+40, +3, false, false);
+                        } else {
+                            // (-40pts) AND (-3lives)
+                            return new QuestionEffect(-40, -3, false, false);
+                        }
+                }
+                break;
+        }
+
+        // לא אמור להגיע לכאן
+        return new QuestionEffect(0,0,false,false);
+    }
 }
