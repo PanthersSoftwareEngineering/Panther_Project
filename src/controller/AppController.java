@@ -32,5 +32,9 @@ public class AppController {
     public void showMainMenu(){
         SwingUtilities.invokeLater(() -> new view.MainMenuView(this).showSelf());
     }
+    
+    public void openEndScreen(SysData.GameRecord rec){
+        new view.EndView(this, rec).showSelf();
+    }
 
 }
