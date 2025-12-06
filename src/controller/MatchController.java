@@ -111,7 +111,7 @@ public class MatchController {
         }
         return g;
     }
-    
+
     // ======================== Actions ========================
 
     public void reveal(int row,int col){
@@ -179,13 +179,11 @@ public class MatchController {
                 if (questionUI != null){
                     int choice = questionUI.ask(dto);
 
-                    // ====== זה החלק החדש ======
                     // cancel (או סגירת חלון) → לא לענות, לא לשנות תור
                     if (choice < 0){
                         // משאירים את התא כ-pending לאותו שחקן
                         return false;
                     }
-                    // ==========================
 
                     right  = (choice == q.correctIndex());
                     qLevel = q.level();
@@ -204,10 +202,10 @@ public class MatchController {
             match.addLives (eff.livesDelta);
 
             if (eff.revealMineBonus){
-                //revealRandomMineBonus(b, playerIdx);//implement later
+                revealRandomMineBonus(b, playerIdx);
             }
             if (eff.revealAreaBonus){
-                //revealRandom3x3Bonus(b, playerIdx);//implement later
+                revealRandom3x3Bonus(b, playerIdx);
             }
 
             // השאלה טופלה – מסירים מה-pending
@@ -233,71 +231,29 @@ public class MatchController {
         // אחרי אינטראקציה *אמיתית* (לא cancel) – בודקים סוף משחק וסיום תור
         match.checkFinish();
         if (match.isFinished()) {
-        	finishAndClose();
+            finishAndClose();
             return true;
         }
 
         endTurn();
         return true;
     }
- // ======================== Helpers ========================
 
-    public String consumeLastSurpriseMessage(){
-        String s = lastSurpriseMessage;
-        lastSurpriseMessage = null;
-        return s;
+
+    public void toggleFlag(int playerIndex,int row,int col){
+        if (playerIndex != match.activeIndex()) return;
+
+        Board b = (playerIndex==0)? match.board1() : match.board2();
+        Cell  cell = b.cell(row,col);
+        boolean before = cell.isFlagged();
+
+        cell.toggleFlag();
+
+        if (before != cell.isFlagged())
+            applyFlagScoring(cell, cell.isFlagged());
+
+        endTurn();
     }
-
-    private void endTurn(){
-        match.endTurn();
-    }
-
-    private Set<Key> pendSet(int idx){
-        return idx==0 ? pendingP1 : pendingP2;
-    }
-
-    private void addPending(int idx, Key k){
-        pendSet(idx).add(k);
-    }
-
-    /** Basic scoring for reveal (לא קשור לטבלת השאלות) */
-    private void applyRevealScoring(Cell cell){
-        switch(cell.type()){
-            case MINE -> match.addLives(-1);
-            default   -> match.addPoints(+1);
-        }
-    }
-
-    private void applyFlagScoring(Cell cell, boolean nowFlagged){
-        switch(cell.type()){
-            case MINE -> match.addPoints(nowFlagged? +1 : -1);
-            default   -> match.addPoints(nowFlagged? -3 : +3);
-        }
-    }
-
-    // ======================== Finish ========================
-
-    private void finishAndClose(){
-        revealAllBoards();
-        SysData.GameRecord rec = match.toRecord(match.lives() > 0);
-        sys.addRecord(rec);
-        app.openEndScreen(rec);
-    }
-
-    private void revealAllBoards(){
-        Board b1 = match.board1();
-        Board b2 = match.board2();
-
-        for(int r=0;r<b1.rows();r++) for(int c=0;c<b1.cols();c++){
-            Cell x = b1.cell(r,c);
-            if(!x.isRevealed()) x.reveal();
-        }
-        for(int r=0;r<b2.rows();r++) for(int c=0;c<b2.cols();c++){
-            Cell x = b2.cell(r,c);
-            if(!x.isRevealed()) x.reveal();
-        }
-    }
- 
 
     // ======================== Flood ========================
 
@@ -349,6 +305,65 @@ public class MatchController {
                 seen[nr][nc] = true;
                 q.add(new int[]{nr,nc});
             }
+        }
+    }
+
+
+    // ======================== Finish ========================
+
+    private void finishAndClose(){
+        revealAllBoards();
+        SysData.GameRecord rec = match.toRecord(match.lives() > 0);
+        sys.addRecord(rec);
+        app.openEndScreen(rec);
+    }
+
+    private void revealAllBoards(){
+        Board b1 = match.board1();
+        Board b2 = match.board2();
+
+        for(int r=0;r<b1.rows();r++) for(int c=0;c<b1.cols();c++){
+            Cell x = b1.cell(r,c);
+            if(!x.isRevealed()) x.reveal();
+        }
+        for(int r=0;r<b2.rows();r++) for(int c=0;c<b2.cols();c++){
+            Cell x = b2.cell(r,c);
+            if(!x.isRevealed()) x.reveal();
+        }
+    }
+
+    // ======================== Helpers ========================
+
+    public String consumeLastSurpriseMessage(){
+        String s = lastSurpriseMessage;
+        lastSurpriseMessage = null;
+        return s;
+    }
+
+    private void endTurn(){
+        match.endTurn();
+    }
+
+    private Set<Key> pendSet(int idx){
+        return idx==0 ? pendingP1 : pendingP2;
+    }
+
+    private void addPending(int idx, Key k){
+        pendSet(idx).add(k);
+    }
+
+    /** Basic scoring for reveal (לא קשור לטבלת השאלות) */
+    private void applyRevealScoring(Cell cell){
+        switch(cell.type()){
+            case MINE -> match.addLives(-1);
+            default   -> match.addPoints(+1);
+        }
+    }
+
+    private void applyFlagScoring(Cell cell, boolean nowFlagged){
+        switch(cell.type()){
+            case MINE -> match.addPoints(nowFlagged? +1 : -1);
+            default   -> match.addPoints(nowFlagged? -3 : +3);
         }
     }
 
@@ -531,7 +546,13 @@ public class MatchController {
     }
 
     /**
-     * חשיפת ריבוע 3x3 רנדומלי בלוח (או את כל הלוח אם הוא קטן מ-3x3),
+     * חשיפת אזור בגודל 3x3 לפי הדרישה:
+     * 1. מחפשים חלונות 3x3 שבהם *כל* 9 התאים לא חשופים.
+     *    אם יש כאלה – בוחרים אחד מהם באקראי ומגלים אותו.
+     * 2. אם אין חלון עם 9 תאים לא חשופים:
+     *    מחפשים את כל החלונות שבהם מספר התאים הלא-חשופים הוא המקסימלי (<9)
+     *    ובוחרים אחד מהם באקראי.
+     *
      * גם כאן WITHOUT scoring: no points and no life changes.
      * כן נוסיף pending לשאלות/הפתעות שנחשפו.
      */
@@ -539,8 +560,8 @@ public class MatchController {
         int R = b.rows(), C = b.cols();
         if (R == 0 || C == 0) return;
 
+        // לוח קטן מ-3x3 – ממשיכים להתנהגות הישנה: לחשוף את כל הלוח כבונוס.
         if (R < 3 || C < 3){
-            // לוח קטן – נחשוף את כולו כבונוס
             for (int r=0; r<R; r++){
                 for (int c=0; c<C; c++){
                     bonusRevealCell(b, playerIdx, r, c);
@@ -549,12 +570,68 @@ public class MatchController {
             return;
         }
 
-        int centerR = 1 + rnd.nextInt(R - 2); // 1..R-2
-        int centerC = 1 + rnd.nextInt(C - 2); // 1..C-2
+        List<int[]> fullWindows = new ArrayList<>();   // חלונות עם 9 תאים לא-חשופים
+        List<int[]> bestPartial = new ArrayList<>();   // חלונות עם מקסימום תאים לא-חשופים (<9)
+        int bestPartialCount = 0;
 
-        for (int r=centerR-1; r<=centerR+1; r++){
-            for (int c=centerC-1; c<=centerC+1; c++){
-                bonusRevealCell(b, playerIdx, r, c);
+        // עוברים על כל חלונות 3x3 האפשריים
+        for (int r = 0; r <= R - 3; r++) {
+            for (int c = 0; c <= C - 3; c++) {
+
+                int unrevealed = 0;
+
+                for (int dr = 0; dr < 3; dr++) {
+                    for (int dc = 0; dc < 3; dc++) {
+                        Cell cell = b.cell(r + dr, c + dc);
+                        if (!cell.isRevealed()) {
+                            unrevealed++;
+                        }
+                    }
+                }
+
+                if (unrevealed == 0) {
+                    // אין מה לחשוף בחלון הזה
+                    continue;
+                }
+
+                if (unrevealed == 9) {
+                    // חלון מלא 3x3 לא-חשוף – נכנס לרשימת ה-full
+                    fullWindows.add(new int[]{r, c});
+                } else {
+                    // חלון חלקי – נעדכן רשימת bestPartial
+                    if (unrevealed > bestPartialCount) {
+                        bestPartialCount = unrevealed;
+                        bestPartial.clear();
+                        bestPartial.add(new int[]{r, c});
+                    } else if (unrevealed == bestPartialCount) {
+                        bestPartial.add(new int[]{r, c});
+                    }
+                }
+            }
+        }
+
+        int[] chosen = null;
+
+        if (!fullWindows.isEmpty()) {
+            // יש חלונות 3x3 מלאים – בוחרים אחד מהם באקראי
+            chosen = fullWindows.get(rnd.nextInt(fullWindows.size()));
+        } else if (bestPartialCount > 0 && !bestPartial.isEmpty()) {
+            // אין חלון מלא, אבל יש חלונות עם כמות מקסימלית (<9) – בוחרים אחד מהם
+            chosen = bestPartial.get(rnd.nextInt(bestPartial.size()));
+        } else {
+            // אין בכלל מה לחשוף
+            return;
+        }
+
+        int sr = chosen[0];
+        int sc = chosen[1];
+
+        // חושפים את כל התאים הלא-חשופים בחלון שנבחר
+        for (int dr = 0; dr < 3; dr++) {
+            for (int dc = 0; dc < 3; dc++) {
+                int rr = sr + dr;
+                int cc = sc + dc;
+                bonusRevealCell(b, playerIdx, rr, cc);
             }
         }
     }
@@ -574,7 +651,7 @@ public class MatchController {
             addPending(playerIdx, new Key(r,c,false));
         }
     }
-    
+
     /**
      * האם תא הוא QuestionCell שכבר טופל (השאלה כבר נענתה)?
      * "טופל" = התא כבר מגולה, ואין עליו pending לשחקן הזה.
