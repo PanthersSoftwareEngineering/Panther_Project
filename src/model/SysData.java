@@ -22,8 +22,8 @@ public class SysData {
         return INSTANCE;
     }
 
-    /* Private ctor loads CSV files */
-    private SysData() { loadQuestions(); }
+    /* Private constructor loads CSV files */
+    private SysData() { loadQuestions(); loadHistory();}
 
     /* Questions CSV file (new comma format) */
     private static Path questionsPath() {
@@ -45,14 +45,18 @@ public class SysData {
     }
 
 
+    
+    
     /* Minimum number of questions allowed in system */
     private static final int MIN_QUESTIONS = 20;
 
     /* List of all questions */
     private final List<Question>   questions = new ArrayList<>();
+    private final List<GameRecord> history   = new ArrayList<>();
 
     /* Read-only questions getter */
     public List<Question>   questions() { return Collections.unmodifiableList(questions); }
+    public List<GameRecord>   history() { return Collections.unmodifiableList(history); }
     
     // ---------- Question decks ----------
     // Per-level decks
@@ -242,4 +246,83 @@ public class SysData {
             e.printStackTrace();
         }
     }
+    
+    
+    
+    
+    
+    // ---------- GameRecord ----------
+    public static class GameRecord {
+        public final String p1,p2;
+        public final DifficultyLevel level;
+        public final int hearts, points;
+        public final boolean won;
+        public final long timeSec;
+        public final long timestamp;
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec){
+            this(p1,p2,lvl,hearts,points,won,timeSec,System.currentTimeMillis());
+        }
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec,long ts){
+            this.p1=p1; this.p2=p2; this.level=lvl; this.hearts=hearts; this.points=points; this.won=won; this.timeSec=timeSec; this.timestamp=ts;
+        }
+    }
+    
+    
+    
+    
+    // ---------- History File Parser----------
+    private static final Path HISTORY_CSV   = Paths.get("history.csv");
+
+
+
+    
+    private static List<String> parseLine(String line){
+        List<String> out=new ArrayList<>();
+        StringBuilder cur=new StringBuilder();
+        boolean inQ=false;
+        for(int i=0;i<line.length();i++){
+            char ch=line.charAt(i);
+            if(inQ){
+                if(ch=='"' && i+1<line.length() && line.charAt(i+1)=='"'){ cur.append('"'); i++; }
+                else if(ch=='"'){ inQ=false; }
+                else cur.append(ch);
+            }else{
+                if(ch==';'){ out.add(cur.toString()); cur.setLength(0); }
+                else if(ch=='"'){ inQ=true; }
+                else cur.append(ch);
+            }
+        }
+        out.add(cur.toString());
+        return out;
+    }
+
+    private void loadHistory(){
+        history.clear();
+        if(!Files.exists(HISTORY_CSV)) return;
+        try(BufferedReader br=Files.newBufferedReader(HISTORY_CSV, StandardCharsets.UTF_8)){
+            String line;
+            while((line=br.readLine())!=null){
+                if(line.isBlank()) continue;
+                List<String> f=parseLine(line);
+                if(f.size()<8) continue;
+                GameRecord r = new GameRecord(
+                        f.get(0), f.get(1), DifficultyLevel.valueOf(f.get(2)),
+                        Integer.parseInt(f.get(3)), Integer.parseInt(f.get(4)),
+                        Boolean.parseBoolean(f.get(5)), Long.parseLong(f.get(6)), Long.parseLong(f.get(7)));
+                history.add(r);
+            }
+        }catch(IOException e){ e.printStackTrace(); }
+    }
+
+    private void appendHistoryCsv(GameRecord r){
+        try(BufferedWriter bw=Files.newBufferedWriter(HISTORY_CSV, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND)){
+            String line = String.join(";",
+                    esc(r.p1), esc(r.p2), r.level.name(),
+                    String.valueOf(r.hearts), String.valueOf(r.points),
+                    String.valueOf(r.won), String.valueOf(r.timeSec), String.valueOf(r.timestamp));
+            bw.write(line); bw.newLine();
+        }catch(IOException e){ e.printStackTrace(); }
+    }
+    
 }
