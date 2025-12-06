@@ -2,7 +2,6 @@ package controller;
 
 import java.util.*;
 
-
 import model.*;
 import view.QuestionDTO;
 import view.QuestionUI;
@@ -505,4 +504,107 @@ public class MatchController {
         // לא אמור להגיע לכאן
         return new QuestionEffect(0,0,false,false);
     }
+
+    // ======================== Bonus reveal helpers ========================
+
+    /**
+     * חשיפת מוקש אחד רנדומלי בלוח הנתון (אם יש לא-מגולה),
+     * WITHOUT scoring: no points and no life changes.
+     */
+    private void revealRandomMineBonus(Board b, int playerIdx){
+        List<int[]> mines = new ArrayList<>();
+        for (int r=0; r<b.rows(); r++){
+            for (int c=0; c<b.cols(); c++){
+                Cell cell = b.cell(r,c);
+                if (!cell.isRevealed() && cell instanceof MineCell){
+                    mines.add(new int[]{r,c});
+                }
+            }
+        }
+        if (mines.isEmpty()) return;
+
+        int[] chosen = mines.get(rnd.nextInt(mines.size()));
+        Cell mine = b.cell(chosen[0], chosen[1]);
+        if (!mine.isRevealed()){
+            mine.reveal();  // בלי applyRevealScoring → אין נקודות/חיים
+        }
+    }
+
+    /**
+     * חשיפת ריבוע 3x3 רנדומלי בלוח (או את כל הלוח אם הוא קטן מ-3x3),
+     * גם כאן WITHOUT scoring: no points and no life changes.
+     * כן נוסיף pending לשאלות/הפתעות שנחשפו.
+     */
+    private void revealRandom3x3Bonus(Board b, int playerIdx){
+        int R = b.rows(), C = b.cols();
+        if (R == 0 || C == 0) return;
+
+        if (R < 3 || C < 3){
+            // לוח קטן – נחשוף את כולו כבונוס
+            for (int r=0; r<R; r++){
+                for (int c=0; c<C; c++){
+                    bonusRevealCell(b, playerIdx, r, c);
+                }
+            }
+            return;
+        }
+
+        int centerR = 1 + rnd.nextInt(R - 2); // 1..R-2
+        int centerC = 1 + rnd.nextInt(C - 2); // 1..C-2
+
+        for (int r=centerR-1; r<=centerR+1; r++){
+            for (int c=centerC-1; c<=centerC+1; c++){
+                bonusRevealCell(b, playerIdx, r, c);
+            }
+        }
+    }
+
+    /**
+     * חשיפה של תא בונוס (ללא ניקוד/חיים), כן מוסיף pending לשאלה/הפתעה.
+     */
+    private void bonusRevealCell(Board b, int playerIdx, int r, int c){
+        Cell cell = b.cell(r,c);
+        if (cell.isRevealed()) return;
+
+        cell.reveal(); // אין applyRevealScoring → רק מידע
+
+        if (cell instanceof QuestionCell){
+            addPending(playerIdx, new Key(r,c,true));
+        } else if (cell instanceof SurpriseCell){
+            addPending(playerIdx, new Key(r,c,false));
+        }
+    }
+    
+    /**
+     * האם תא הוא QuestionCell שכבר טופל (השאלה כבר נענתה)?
+     * "טופל" = התא כבר מגולה, ואין עליו pending לשחקן הזה.
+     */
+    public boolean isQuestionUsed(int playerIdx, int row, int col){
+        Board b = (playerIdx==0)? match.board1() : match.board2();
+        Cell cell = b.cell(row,col);
+        if (!(cell instanceof QuestionCell)) return false;
+
+        Set<Key> pend = pendSet(playerIdx);
+        Key qKey = new Key(row,col,true);
+
+        // אם הוא שאלה, מגולה, ולא ב-pending → כבר השתמשנו בו
+        return cell.isRevealed() && !pend.contains(qKey);
+    }
+
+    /**
+     * האם תא הוא SurpriseCell שכבר הופעל?
+     * משתמשים גם ב-wasOperated וגם ב-pending.
+     */
+    public boolean isSurpriseUsed(int playerIdx, int row, int col){
+        Board b = (playerIdx==0)? match.board1() : match.board2();
+        Cell cell = b.cell(row,col);
+        if (!(cell instanceof SurpriseCell sc)) return false;
+
+        Set<Key> pend = pendSet(playerIdx);
+        Key sKey = new Key(row,col,false);
+
+        // אם ההפתעה כבר הופעלה, או שהיא מגולה ולא ב-pending – נחשב כ"משומש"
+        return sc.wasOperated() || (cell.isRevealed() && !pend.contains(sKey));
+    }
+
 }
