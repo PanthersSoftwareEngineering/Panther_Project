@@ -6,73 +6,70 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Singleton data store for:
- * - Questions bank 
- * - Game history
- */
 public class SysData {
 
-    /* Singleton instance field */
+    // ---------- Singleton ----------
     private static SysData INSTANCE;
-
-    /* Singleton accessor */
     public static synchronized SysData getInstance() {
         if (INSTANCE == null) INSTANCE = new SysData();
         return INSTANCE;
     }
+    private SysData() { loadQuestions(); loadHistory(); }
 
-    /* Private constructor loads CSV files */
-    private SysData() { loadQuestions(); loadHistory();}
+    // ---------- Files ----------
+    private static final Path QUESTIONS_CSV = Paths.get("questions.csv");
+    private static final Path HISTORY_CSV   = Paths.get("history.csv");
 
-    /* Questions CSV file (new comma format) */
-    private static Path questionsPath() {
-        try {
-            // folder that contains the running jar (or class files in IDE)
-            Path jarDir = Paths.get(
-                    SysData.class.getProtectionDomain()
-                            .getCodeSource()
-                            .getLocation()
-                            .toURI()
-            ).getParent();
+    // מינימום שאלות במערכת – לא נרד מתחת לזה במחיקה
+    private static final int MIN_QUESTIONS = 20;
 
-            return jarDir.resolve("questions.csv");
-
-        } catch (Exception e) {
-            // fallback: current working directory
-            return Paths.get("questions.csv");
+    // ---------- GameRecord ----------
+    public static class GameRecord {
+        public final String p1,p2;
+        public final DifficultyLevel level;
+        public final int hearts, points;
+        public final boolean won;
+        public final long timeSec;
+        public final long timestamp;
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec){
+            this(p1,p2,lvl,hearts,points,won,timeSec,System.currentTimeMillis());
+        }
+        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec,long ts){
+            this.p1=p1; this.p2=p2; this.level=lvl; this.hearts=hearts; this.points=points; this.won=won; this.timeSec=timeSec; this.timestamp=ts;
         }
     }
 
-
-    
-    
-    /* Minimum number of questions allowed in system */
-    private static final int MIN_QUESTIONS = 20;
-
-    /* List of all questions */
-    private final List<Question>   questions = new ArrayList<>();
+    // ---------- Data ----------
     private final List<GameRecord> history   = new ArrayList<>();
+    private final List<Question>   questions = new ArrayList<>();
 
-    /* Read-only questions getter */
+    public List<GameRecord> history()   { return Collections.unmodifiableList(history); }
     public List<Question>   questions() { return Collections.unmodifiableList(questions); }
-    public List<GameRecord>   history() { return Collections.unmodifiableList(history); }
-    
+
     // ---------- Question decks ----------
-    // Per-level decks
+    // Per-level decks (if אי פעם תרצה שוב שליפה לפי level)
     private final EnumMap<QuestionLevel, ArrayDeque<Question>> decks =
             new EnumMap<>(QuestionLevel.class);
 
-    /* Deck for random questions regardless of level */
+    // Deck לכל השאלות – לשימוש כששולפים שאלה רנדומלית ללא קשר לרמת התא
     private final ArrayDeque<Question> deckAll = new ArrayDeque<>();
 
-    /* Clears all decks after data changes */
     private void invalidateDecks(){
         decks.clear();
         deckAll.clear();
     }
 
-    /* Draw random question from all levels (use-all-before-repeat) */
+ // בתוך SysData.java
+    public int questionCount() {
+        // תעדכן לפי שם הרשימה אצלך
+        return questions.size();
+    }
+
+    
+    /**
+     * Draws a random question from the whole question bank, regardless of level.
+     * Uses a deck so all questions are used once before repeating.
+     */
     public synchronized Question drawRandomQuestion(){
         if (questions.isEmpty()) return null;
         if (deckAll.isEmpty()){
@@ -83,17 +80,26 @@ public class SysData {
         return deckAll.pollFirst();
     }
 
-    /* Add question + save all + reset decks */
+    // ---------- Public mutators ----------
+    public synchronized void addRecord(GameRecord r){
+        history.add(r);
+        appendHistoryCsv(r);
+    }
+
+    /** Add question + שמירה ל־CSV, בלי הגבלה על מקסימום. */
     public synchronized void addQuestion(Question q){
         questions.add(q);
         saveAllQuestions();
         invalidateDecks();
     }
 
-    /* Delete question with MIN_QUESTIONS protection */
+    /**
+     * Delete question by ID.
+     * לא מאפשר מחיקה אם יש במערכת MIN_QUESTIONS שאלות או פחות.
+     */
     public synchronized boolean deleteQuestion(String id){
         if (questions.size() <= MIN_QUESTIONS)
-            return false;
+            return false; // נמנעים מלרדת מתחת ל־MIN_QUESTIONS
 
         boolean ok = questions.removeIf(q -> q.id().equals(id));
         if (ok){
@@ -103,7 +109,10 @@ public class SysData {
         return ok;
     }
 
-    /*  Returns max numeric id + 1 for auto-IDs */
+    /**
+     * Returns the next numeric question id (max existing + 1).
+     * אם יש ID לא מספרי – מתעלמים ממנו לצורך חישוב ה־max.
+     */
     public synchronized int nextQuestionId(){
         int max = 0;
         for (Question q : questions){
@@ -115,8 +124,7 @@ public class SysData {
         return max + 1;
     }
 
-
-    /* Escapes field for comma CSV */
+    // ---------- CSV helpers for questions (comma separated) ----------
     private static String esc(String s){
         if(s==null) return "";
         boolean q = s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r");
@@ -124,7 +132,7 @@ public class SysData {
         return q ? "\""+body+"\"" : body;
     }
 
-    /* Splits one comma-CSV line while honoring quotes */
+    /** CSV splitter for comma-separated values */
     private static String[] splitCsvLine(String line){
         List<String> out = new ArrayList<>();
         StringBuilder cur = new StringBuilder();
@@ -146,11 +154,17 @@ public class SysData {
         return out.toArray(new String[0]);
     }
 
-    /* Load questions from CSV */
-    private void loadQuestions(){
+    // ============================================================
+    //                QUESTIONS CSV FORMAT
+    //
+    // ID,Question,Difficulty,A,B,C,D,CorrectAnswer
+    //
+    // Difficulty: 1=EASY, 2=MEDIUM, 3=HARD, 4=MASTER
+    // CorrectAnswer: A/B/C/D
+    // ============================================================
 
+    private void loadQuestions(){
         questions.clear();
-        Path QUESTIONS_CSV = questionsPath();
         if(!Files.exists(QUESTIONS_CSV)) return;
 
         try(BufferedReader br = Files.newBufferedReader(QUESTIONS_CSV, StandardCharsets.UTF_8)){
@@ -160,6 +174,7 @@ public class SysData {
             while((line=br.readLine())!=null){
                 if(line.isBlank()) continue;
 
+                // skip header row
                 if(first){
                     first=false;
                     String low = line.toLowerCase();
@@ -181,6 +196,7 @@ public class SysData {
 
                 String correctLetter = f[7].trim().toUpperCase();
 
+                // map difficulty 1..4 → QuestionLevel enum
                 QuestionLevel level;
                 try{
                     int d = Integer.parseInt(diff);
@@ -195,7 +211,9 @@ public class SysData {
                     level = QuestionLevel.EASY;
                 }
 
+                // map A/B/C/D → 0..3
                 int correctIndex = Math.max(0, Math.min(3, correctLetter.charAt(0) - 'A'));
+
                 List<String> opts = List.of(optA,optB,optC,optD);
 
                 questions.add(new Question(id, text, opts, correctIndex, level));
@@ -208,12 +226,11 @@ public class SysData {
         invalidateDecks();
     }
 
-    /* Save all questions to CSV (overwrite) */
     private void saveAllQuestions(){
-    	Path QUESTIONS_CSV = questionsPath();
         try(BufferedWriter bw = Files.newBufferedWriter(QUESTIONS_CSV, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)){
 
+            // header
             bw.write("ID,Question,Difficulty,A,B,C,D,CorrectAnswer");
             bw.newLine();
 
@@ -246,36 +263,8 @@ public class SysData {
             e.printStackTrace();
         }
     }
-    
-    
-    
-    
-    
-    // ---------- GameRecord ----------
-    public static class GameRecord {
-        public final String p1,p2;
-        public final DifficultyLevel level;
-        public final int hearts, points;
-        public final boolean won;
-        public final long timeSec;
-        public final long timestamp;
-        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec){
-            this(p1,p2,lvl,hearts,points,won,timeSec,System.currentTimeMillis());
-        }
-        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,boolean won,long timeSec,long ts){
-            this.p1=p1; this.p2=p2; this.level=lvl; this.hearts=hearts; this.points=points; this.won=won; this.timeSec=timeSec; this.timestamp=ts;
-        }
-    }
-    
-    
-    
-    
-    // ---------- History File Parser----------
-    private static final Path HISTORY_CSV   = Paths.get("history.csv");
 
-
-
-    
+    // ---------- HISTORY (unchanged structure, ; separated) ----------
     private static List<String> parseLine(String line){
         List<String> out=new ArrayList<>();
         StringBuilder cur=new StringBuilder();
@@ -324,5 +313,4 @@ public class SysData {
             bw.write(line); bw.newLine();
         }catch(IOException e){ e.printStackTrace(); }
     }
-    
 }
