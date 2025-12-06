@@ -136,7 +136,7 @@ public class MatchController {
 
         match.checkFinish();
         if (match.isFinished()) {
-            //finishAndClose();//add in future
+            finishAndClose();
             return;
         }
 
@@ -234,7 +234,7 @@ public class MatchController {
         // אחרי אינטראקציה *אמיתית* (לא cancel) – בודקים סוף משחק וסיום תור
         match.checkFinish();
         if (match.isFinished()) {
-        	//finishAndClose();//add in future
+        	finishAndClose();
             return true;
         }
 
@@ -276,7 +276,28 @@ public class MatchController {
         }
     }
 
+    // ======================== Finish ========================
 
+    private void finishAndClose(){
+        revealAllBoards();
+        SysData.GameRecord rec = match.toRecord(match.lives() > 0);
+        sys.addRecord(rec);
+        app.openEndScreen(rec);
+    }
+
+    private void revealAllBoards(){
+        Board b1 = match.board1();
+        Board b2 = match.board2();
+
+        for(int r=0;r<b1.rows();r++) for(int c=0;c<b1.cols();c++){
+            Cell x = b1.cell(r,c);
+            if(!x.isRevealed()) x.reveal();
+        }
+        for(int r=0;r<b2.rows();r++) for(int c=0;c<b2.cols();c++){
+            Cell x = b2.cell(r,c);
+            if(!x.isRevealed()) x.reveal();
+        }
+    }
  
 
     // ======================== Flood ========================
