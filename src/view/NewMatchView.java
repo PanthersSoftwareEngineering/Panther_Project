@@ -44,36 +44,92 @@ public class NewMatchView extends JFrame {
 
         // Explicitly select the placeholder difficulty
         diff.setSelectedItem(PLACEHOLDER_DIFF);
-
-        // When "Start" is clicked, validate names and difficulty before starting the game.
+     // When "Start" is clicked, validate names and difficulty before starting the game.
         start.addActionListener(e -> {
             String name1 = p1.getText().trim();
             String name2 = p2.getText().trim();
             String level = (String) diff.getSelectedItem();
 
-            // 1. Both names must be non-empty
-            if (name1.isEmpty() || name2.isEmpty()) {
+            // ===================== Player 1 checks =====================
+            // 1.1 not empty
+            if (name1.isEmpty()) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Both player names must be filled in (they cannot be empty).",
-                        "Missing Player Name",
+                        "Player 1 name must not be empty.",
+                        "Invalid Player 1 Name",
                         JOptionPane.WARNING_MESSAGE
                 );
                 return;
             }
 
-            // 2. Names must be different
+            // 1.2 length <= 10
+            if (name1.length() > 10) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player 1 name must be at most 10 characters.",
+                        "Invalid Player 1 Name",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // 1.3 only letters and digits
+            if (!containsOnlyLettersAndDigits(name1)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player 1 name may contain only English letters and digits.",
+                        "Invalid Player 1 Name",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // ===================== Player 2 checks =====================
+            // 2.1 not empty
+            if (name2.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player 2 name must not be empty.",
+                        "Invalid Player 2 Name",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // 2.2 length <= 10
+            if (name2.length() > 10) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player 2 name must be at most 10 characters.",
+                        "Invalid Player 2 Name",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // 2.3 only letters and digits
+            if (!containsOnlyLettersAndDigits(name2)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Player 2 name may contain only English letters and digits.",
+                        "Invalid Player 2 Name",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            // ===================== Both names together =====================
             if (name1.equalsIgnoreCase(name2)) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Player names must be different.\nPlease choose two different names.",
+                        "Player names must be different.",
                         "Duplicate Player Names",
                         JOptionPane.WARNING_MESSAGE
                 );
                 return;
             }
 
-            // 3. Difficulty must be selected (not the placeholder)
+            // ===================== Difficulty checks =====================
             if (level == null || PLACEHOLDER_DIFF.equals(level)) {
                 JOptionPane.showMessageDialog(
                         this,
@@ -89,6 +145,7 @@ public class NewMatchView extends JFrame {
             dispose();
         });
 
+
         // When "Back" is clicked, return to main menu.
         back.addActionListener(e -> {
             dispose();
@@ -100,6 +157,17 @@ public class NewMatchView extends JFrame {
         setVisible(true);
     }
 
+    
+    /** Returns true iff the name contains only letters and digits. */
+    private boolean containsOnlyLettersAndDigits(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (!Character.isLetterOrDigit(s.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
     /** Here the window is already visible, but kept for consistency. */
     public void showSelf(){ /* shown in ctor */ }
 }
