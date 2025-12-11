@@ -141,4 +141,7 @@ public class Board {
             }
         return cnt;
     }
+    public void setCellForTest(int row, int col, Cell cell) {
+    	grid[row][col] = cell;
+    }
 }
