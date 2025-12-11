@@ -83,6 +83,9 @@ public class Match {
      */
     public void addLives(int d){
         lives += d;
+        if (lives > 10) {
+            lives = 10;
+        }
         if(lives < 0) lives = 0;
     }
 
