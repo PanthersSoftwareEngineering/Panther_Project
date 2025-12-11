@@ -16,7 +16,7 @@ public class Question {
     /** List of 4 answer options. */
     private final List<String> options;
 
-    /** Index (0..3) of the correct answer in the options list. */
+    /** Index of the correct answer in the options list (0–3). */
     private final int correctIndex;
 
     /** Difficulty level of this question. */
@@ -31,11 +31,18 @@ public class Question {
      * @param correctIndex index of the correct answer (0..3)
      * @param level        question difficulty level
      */
-    public Question(String id, String text, List<String> options, int correctIndex, QuestionLevel level) {
-        if (options == null || options.size() != 4)
-            throw new IllegalArgumentException("need 4 options");
-        if (correctIndex < 0 || correctIndex > 3)
-            throw new IllegalArgumentException("correctIndex 0..3");
+    public Question(String id,
+                    String text,
+                    List<String> options,
+                    int correctIndex,
+                    QuestionLevel level) {
+
+        if (options == null || options.size() != 4) {
+            throw new IllegalArgumentException("Question must have exactly 4 options.");
+        }
+        if (correctIndex < 0 || correctIndex > 3) {
+            throw new IllegalArgumentException("Correct index must be 0–3 (A–D).");
+        }
 
         this.id = id;
         this.text = text;
@@ -44,9 +51,14 @@ public class Question {
         this.level = level;
     }
 
-    public String id(){ return id; }
-    public String text(){ return text; }
-    public List<String> options(){ return options; }
-    public int correctIndex(){ return correctIndex; }
-    public QuestionLevel level(){ return level; }
+    public String id()            { return id; }
+    public String text()          { return text; }
+    public List<String> options() { return options; }
+    public int correctIndex()     { return correctIndex; }
+    public QuestionLevel level()  { return level; }
+
+    /** Returns the correct answer as a letter A–D. */
+    public char correctLetter() {
+        return (char) ('A' + correctIndex); // 0→A, 1→B, 2→C, 3→D
+    }
 }
