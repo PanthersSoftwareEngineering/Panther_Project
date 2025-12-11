@@ -41,4 +41,22 @@ public class Cell_Tests {
 
         assertEquals(before - 1, m.lives());
     }
+
+    @Test
+    //Check that empty cell reveal increases points correctly
+    public void testRevealEmptyIncreasesPoints() {
+
+        Match m = new Match(new Player("A"), new Player("B"), DifficultyLevel.EASY);
+        Board board = m.board1();
+        board.setCellForTest(0, 0, new EmptyCell());
+
+        MatchController mc = MatchController.getInstance();
+        mc.init(m, SysData.getInstance(), AppController.getInstance());
+
+        int before = m.points();
+
+        mc.reveal(0, 0);   // will call floodReveal → reveal several cells
+
+        assertTrue(m.points() > before);   // points must increase (>= +1)
+        }
 }
