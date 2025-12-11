@@ -77,7 +77,7 @@ public class NewMatchView extends JFrame {
             if (!containsOnlyLettersAndDigits(name1)) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Player 1 name may contain only English letters and digits.",
+                        "Player 1 name may contain only letters and digits.",
                         "Invalid Player 1 Name",
                         JOptionPane.WARNING_MESSAGE
                 );
@@ -111,7 +111,7 @@ public class NewMatchView extends JFrame {
             if (!containsOnlyLettersAndDigits(name2)) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Player 2 name may contain only English letters and digits.",
+                        "Player 2 name may contain only letters and digits.",
                         "Invalid Player 2 Name",
                         JOptionPane.WARNING_MESSAGE
                 );
