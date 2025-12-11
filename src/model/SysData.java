@@ -20,11 +20,11 @@ public class SysData {
         loadHistory();
     }
 
-    // =============================================================
-    //              *** CSV PATH RESOLUTION LIKE FIRST CODE ***
-    // =============================================================
+    // ============================================================
+    //         DYNAMIC CSV PATHS (WORKS IN JAR + IDE)
+    // ============================================================
 
-    private static Path baseFolder() {
+    private static Path questionsPath() {
         try {
             Path jarDir = Paths.get(
                     SysData.class.getProtectionDomain()
@@ -33,44 +33,58 @@ public class SysData {
                             .toURI()
             ).getParent();
 
-            return jarDir; // folder of jar or /bin in Eclipse
+            return jarDir.resolve("questions.csv");
 
         } catch (Exception e) {
-            return Paths.get("."); // fallback: working directory
+            return Paths.get("questions.csv");
         }
     }
 
-    private static Path questionsPath() {
-        return baseFolder().resolve("questions.csv");
-    }
-
     private static Path historyPath() {
-        return baseFolder().resolve("history.csv");
+        try {
+            Path jarDir = Paths.get(
+                    SysData.class.getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI()
+            ).getParent();
+
+            return jarDir.resolve("history.csv");
+
+        } catch (Exception e) {
+            return Paths.get("history.csv");
+        }
     }
 
-    // מינימום שאלות במערכת
+    // ---------- Constants ----------
     private static final int MIN_QUESTIONS = 20;
 
     // ---------- GameRecord ----------
     public static class GameRecord {
-        public final String p1,p2;
+        public final String p1, p2;
         public final DifficultyLevel level;
         public final int hearts, points;
         public final boolean won;
         public final long timeSec;
         public final long timestamp;
 
-        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,
-                          boolean won,long timeSec) {
-            this(p1,p2,lvl,hearts,points,won,timeSec,System.currentTimeMillis());
+        public GameRecord(String p1, String p2, DifficultyLevel lvl,
+                          int hearts, int points, boolean won, long timeSec) {
+            this(p1, p2, lvl, hearts, points, won, timeSec,
+                 System.currentTimeMillis());
         }
 
-        public GameRecord(String p1,String p2,DifficultyLevel lvl,int hearts,int points,
-                          boolean won,long timeSec,long ts){
-            this.p1=p1; this.p2=p2; this.level=lvl;
-            this.hearts=hearts; this.points=points;
-            this.won=won; this.timeSec=timeSec;
-            this.timestamp=ts;
+        public GameRecord(String p1, String p2, DifficultyLevel lvl,
+                          int hearts, int points, boolean won,
+                          long timeSec, long ts) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.level = lvl;
+            this.hearts = hearts;
+            this.points = points;
+            this.won = won;
+            this.timeSec = timeSec;
+            this.timestamp = ts;
         }
     }
 
@@ -81,9 +95,10 @@ public class SysData {
     public List<GameRecord> history()   { return Collections.unmodifiableList(history); }
     public List<Question>   questions() { return Collections.unmodifiableList(questions); }
 
-    // ---------- Decks ----------
+    // ---------- Question decks ----------
     private final EnumMap<QuestionLevel, ArrayDeque<Question>> decks =
             new EnumMap<>(QuestionLevel.class);
+
     private final ArrayDeque<Question> deckAll = new ArrayDeque<>();
 
     private void invalidateDecks() {
@@ -95,10 +110,22 @@ public class SysData {
         return questions.size();
     }
 
+    public synchronized Question drawQuestion(QuestionLevel lvl) {
+        ArrayDeque<Question> deck = decks.computeIfAbsent(lvl, k -> new ArrayDeque<>());
+        if (deck.isEmpty()) {
+            List<Question> pool = new ArrayList<>();
+            for (Question q : questions) {
+                if (q.level() == lvl) pool.add(q);
+            }
+            Collections.shuffle(pool, ThreadLocalRandom.current());
+            deck.addAll(pool);
+        }
+        return deck.isEmpty() ? null : deck.pollFirst();
+    }
+
     public synchronized Question drawRandomQuestion() {
         if (questions.isEmpty()) return null;
-
-        if (deckAll.isEmpty()){
+        if (deckAll.isEmpty()) {
             List<Question> pool = new ArrayList<>(questions);
             Collections.shuffle(pool, ThreadLocalRandom.current());
             deckAll.addAll(pool);
@@ -106,7 +133,10 @@ public class SysData {
         return deckAll.pollFirst();
     }
 
-    // ---------- Mutators ----------
+    // ============================================================
+    // Public mutators
+    // ============================================================
+
     public synchronized void addRecord(GameRecord r) {
         history.add(r);
         appendHistoryCsv(r);
@@ -118,123 +148,186 @@ public class SysData {
         invalidateDecks();
     }
 
-    public synchronized boolean deleteQuestion(String id){
+    public synchronized boolean deleteQuestion(String id) {
         if (questions.size() <= MIN_QUESTIONS)
             return false;
 
-        boolean ok = questions.removeIf(q -> q.id().equals(id));
-        if (ok){
+        boolean removed = questions.removeIf(q -> q.id().equals(id));
+
+        if (removed) {
+            List<Question> renumbered = new ArrayList<>();
+
+            for (int i = 0; i < questions.size(); i++) {
+                Question q = questions.get(i);
+                String newId = String.valueOf(i + 1);
+
+                renumbered.add(
+                        new Question(
+                                newId,
+                                q.text(),
+                                q.options(),
+                                q.correctIndex(),
+                                q.level()
+                        )
+                );
+            }
+
+            questions.clear();
+            questions.addAll(renumbered);
+
             saveAllQuestions();
             invalidateDecks();
         }
-        return ok;
+
+        return removed;
     }
 
-    public synchronized int nextQuestionId(){
+    public synchronized int nextQuestionId() {
         int max = 0;
-        for (Question q : questions){
+        for (Question q : questions) {
             try {
                 int v = Integer.parseInt(q.id().trim());
                 if (v > max) max = v;
-            } catch(NumberFormatException ignored){}
+            } catch (Exception ignored) {}
         }
         return max + 1;
     }
 
-    // ---------- CSV Helpers ----------
-    private static String esc(String s){
-        if(s==null) return "";
-        boolean q = s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r");
-        String body = s.replace("\"","\"\"");
+    // ============================================================
+    // CSV helpers
+    // ============================================================
+
+    private static String esc(String s) {
+        if (s == null) return "";
+        boolean q = s.contains(",") || s.contains("\"") ||
+                s.contains("\n") || s.contains("\r");
+        String body = s.replace("\"", "\"\"");
         return q ? "\"" + body + "\"" : body;
     }
 
-    private static String[] splitCsvLine(String line){
+    private static String[] splitCsvLine(String line) {
         List<String> out = new ArrayList<>();
         StringBuilder cur = new StringBuilder();
         boolean inQ = false;
 
-        for (int i=0;i<line.length();i++){
+        for (int i = 0; i < line.length(); i++) {
             char ch = line.charAt(i);
-            if (inQ){
-                if(ch=='"' && i+1<line.length() && line.charAt(i+1)=='"'){ cur.append('"'); i++; }
-                else if(ch=='"'){ inQ=false; }
-                else cur.append(ch);
+            if (inQ) {
+                if (ch == '"' && i+1 < line.length() && line.charAt(i+1)=='"') {
+                    cur.append('"'); i++;
+                } else if (ch == '"') {
+                    inQ = false;
+                } else {
+                    cur.append(ch);
+                }
             } else {
-                if(ch==','){ out.add(cur.toString()); cur.setLength(0); }
-                else if(ch=='"'){ inQ=true; }
-                else cur.append(ch);
+                if (ch == ',') {
+                    out.add(cur.toString());
+                    cur.setLength(0);
+                } else if (ch == '"') {
+                    inQ = true;
+                } else {
+                    cur.append(ch);
+                }
             }
         }
+
         out.add(cur.toString());
         return out.toArray(new String[0]);
     }
 
-    // =============================================================
-    //                        LOAD QUESTIONS
-    // =============================================================
-    private void loadQuestions(){
+    // ============================================================
+    // Load Questions
+    // ============================================================
+
+    private void loadQuestions() {
         questions.clear();
-
         Path csv = questionsPath();
-        if(!Files.exists(csv)) return;
 
-        try(BufferedReader br = Files.newBufferedReader(csv, StandardCharsets.UTF_8)) {
+        if (!Files.exists(csv)) return;
+
+        try (BufferedReader br =
+                     Files.newBufferedReader(csv, StandardCharsets.UTF_8)) {
+
             String line;
             boolean first = true;
 
-            while((line = br.readLine()) != null){
+            while ((line = br.readLine()) != null) {
                 if (line.isBlank()) continue;
 
-                if(first){
-                    first=false;
+                if (first) {
+                    first = false;
                     String low = line.toLowerCase();
-                    if(low.contains("question") && low.contains("difficulty"))
+                    if (low.contains("question") && low.contains("difficulty"))
                         continue;
                 }
 
                 String[] f = splitCsvLine(line);
-                if(f.length < 8) continue;
+                if (f.length < 8) continue;
 
                 String id   = f[0].trim();
                 String text = f[1].trim();
-                int    diff = Integer.parseInt(f[2].trim());
+                String diff = f[2].trim();
 
-                QuestionLevel level = switch(diff){
-                    case 1 -> QuestionLevel.EASY;
-                    case 2 -> QuestionLevel.MEDIUM;
-                    case 3 -> QuestionLevel.HARD;
-                    case 4 -> QuestionLevel.MASTER;
-                    default -> QuestionLevel.EASY;
-                };
+                String optA = f[3].trim();
+                String optB = f[4].trim();
+                String optC = f[5].trim();
+                String optD = f[6].trim();
 
-                List<String> opts = List.of(f[3].trim(), f[4].trim(), f[5].trim(), f[6].trim());
-                int correctIndex = f[7].trim().charAt(0) - 'A';
+                String correctLetter = f[7].trim().toUpperCase(Locale.ROOT);
+
+                QuestionLevel level;
+                try {
+                    int d = Integer.parseInt(diff);
+                    level = switch (d) {
+                        case 1 -> QuestionLevel.EASY;
+                        case 2 -> QuestionLevel.MEDIUM;
+                        case 3 -> QuestionLevel.HARD;
+                        case 4 -> QuestionLevel.MASTER;
+                        default -> QuestionLevel.EASY;
+                    };
+                } catch (Exception e) {
+                    level = QuestionLevel.EASY;
+                }
+
+                int numericIndex;
+                if (correctLetter.length() == 1)
+                    numericIndex = correctLetter.charAt(0) - 'A';
+                else
+                    numericIndex = 0;
+
+                int correctIndex = Math.max(0, Math.min(3, numericIndex));
+
+                List<String> opts = List.of(optA, optB, optC, optD);
 
                 questions.add(new Question(id, text, opts, correctIndex, level));
             }
 
-        } catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
         invalidateDecks();
     }
 
-    private void saveAllQuestions() {
-        Path csv = questionsPath();
+    // ============================================================
+    // Save Questions
+    // ============================================================
 
-        try(BufferedWriter bw = Files.newBufferedWriter(csv, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+    private void saveAllQuestions() {
+        try (BufferedWriter bw =
+                     Files.newBufferedWriter(questionsPath(), StandardCharsets.UTF_8,
+                             StandardOpenOption.CREATE,
+                             StandardOpenOption.TRUNCATE_EXISTING)) {
 
             bw.write("ID,Question,Difficulty,A,B,C,D,CorrectAnswer");
             bw.newLine();
 
-            for (Question q : questions){
-                int diffNum = switch(q.level()){
-                    case EASY -> 1;
+            for (Question q : questions) {
+                int diffNum = switch (q.level()) {
+                    case EASY   -> 1;
                     case MEDIUM -> 2;
-                    case HARD -> 3;
+                    case HARD   -> 3;
                     case MASTER -> 4;
                 };
 
@@ -255,49 +348,61 @@ public class SysData {
                 bw.newLine();
             }
 
-        } catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    // =============================================================
-    //                        HISTORY
-    // =============================================================
-    private List<String> parseLine(String line){
-        List<String> out=new ArrayList<>();
-        StringBuilder cur=new StringBuilder();
-        boolean inQ=false;
+    // ============================================================
+    // HISTORY LOAD
+    // ============================================================
 
-        for(int i=0;i<line.length();i++){
-            char ch=line.charAt(i);
-            if(inQ){
-                if(ch=='"' && i+1<line.length() && line.charAt(i+1)=='"'){ cur.append('"'); i++; }
-                else if(ch=='"'){ inQ=false; }
-                else cur.append(ch);
+    private static List<String> parseLine(String line) {
+        List<String> out = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQ = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (inQ) {
+                if (ch=='"' && i+1<line.length() && line.charAt(i+1)=='"') {
+                    cur.append('"'); i++;
+                } else if (ch=='"') {
+                    inQ = false;
+                } else {
+                    cur.append(ch);
+                }
             } else {
-                if(ch==';'){ out.add(cur.toString()); cur.setLength(0); }
-                else if(ch=='"'){ inQ=true; }
-                else cur.append(ch);
+                if (ch==';') {
+                    out.add(cur.toString());
+                    cur.setLength(0);
+                } else if (ch=='"') {
+                    inQ = true;
+                } else {
+                    cur.append(ch);
+                }
             }
         }
+
         out.add(cur.toString());
         return out;
     }
 
-    private void loadHistory(){
+    private void loadHistory() {
         history.clear();
         Path csv = historyPath();
 
-        if(!Files.exists(csv)) return;
+        if (!Files.exists(csv)) return;
 
-        try(BufferedReader br = Files.newBufferedReader(csv, StandardCharsets.UTF_8)){
+        try (BufferedReader br =
+                     Files.newBufferedReader(csv, StandardCharsets.UTF_8)) {
+
             String line;
-
-            while((line = br.readLine()) != null){
-                if(line.isBlank()) continue;
+            while ((line = br.readLine()) != null) {
+                if (line.isBlank()) continue;
 
                 List<String> f = parseLine(line);
-                if(f.size() < 8) continue;
+                if (f.size() < 8) continue;
 
                 GameRecord r = new GameRecord(
                         f.get(0), f.get(1),
@@ -312,33 +417,51 @@ public class SysData {
                 history.add(r);
             }
 
-        } catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void appendHistoryCsv(GameRecord r){
-        Path csv = historyPath();
+    // ============================================================
+    // HISTORY SAVE
+    // ============================================================
 
-        try(BufferedWriter bw = Files.newBufferedWriter(csv, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+    private void appendHistoryCsv(GameRecord r) {
+        try (BufferedWriter bw =
+                     Files.newBufferedWriter(historyPath(), StandardCharsets.UTF_8,
+                             StandardOpenOption.CREATE,
+                             StandardOpenOption.APPEND)) {
 
             String line = String.join(";",
-                    esc(r.p1),
-                    esc(r.p2),
-                    r.level.name(),
-                    String.valueOf(r.hearts),
-                    String.valueOf(r.points),
-                    String.valueOf(r.won),
-                    String.valueOf(r.timeSec),
-                    String.valueOf(r.timestamp)
-            );
+                    esc(r.p1), esc(r.p2), r.level.name(),
+                    String.valueOf(r.hearts), String.valueOf(r.points),
+                    String.valueOf(r.won), String.valueOf(r.timeSec),
+                    String.valueOf(r.timestamp));
 
             bw.write(line);
             bw.newLine();
 
-        } catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // ============================================================
+    // REPLACE QUESTION
+    // ============================================================
+
+    public synchronized void replaceQuestion(String oldId, Question updated) {
+        for (int i = 0; i < questions.size(); i++) {
+            if (questions.get(i).id().equals(oldId)) {
+                questions.set(i, updated);
+                saveAllQuestions();
+                invalidateDecks();
+                return;
+            }
+        }
+
+        questions.add(updated);
+        saveAllQuestions();
+        invalidateDecks();
     }
 }
