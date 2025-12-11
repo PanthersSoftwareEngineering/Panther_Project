@@ -55,12 +55,14 @@ public class MatchController {
 
     private String lastSurpriseMessage = null;
 
-    // ---------- Question effect holder (points + lives + bonuses) ----------
+    // ---------- Question & Surprise effect holders ----------
+
+    /** אפקט של שאלה: נקודות + חיים + בונוסים מיוחדים */
     private static final class QuestionEffect {
         final int pointsDelta;
         final int livesDelta;
-        final boolean revealMineBonus;   // חשיפת מוקש (ללא ניקוד) – EASY+MEDIUM+right
-        final boolean revealAreaBonus;   // חשיפת 3x3 (ללא ניקוד) – EASY+HARD+right
+        final boolean revealMineBonus;   // חשיפת מוקש (ללא ניקוד)
+        final boolean revealAreaBonus;   // חשיפת 3x3 (ללא ניקוד)
 
         QuestionEffect(int p,int l,boolean mine,boolean area){
             this.pointsDelta = p;
@@ -68,6 +70,13 @@ public class MatchController {
             this.revealMineBonus = mine;
             this.revealAreaBonus = area;
         }
+    }
+
+    /** אפקט של Surprise: נקודות + חיים */
+    private static final class SurpriseEffect {
+        final int pointsDelta;
+        final int livesDelta;
+        SurpriseEffect(int p,int l){ pointsDelta=p; livesDelta=l; }
     }
 
     // ---------- init/reset for a new match ----------
@@ -179,20 +188,22 @@ public class MatchController {
                 if (questionUI != null){
                     int choice = questionUI.ask(dto);
 
-                    // cancel (או סגירת חלון) → לא לענות, לא לשנות תור
+                    // cancel (או סגירת חלון) → לא לענות, לא לשנות תור, לא לגבות עלות
                     if (choice < 0){
-                        // משאירים את התא כ-pending לאותו שחקן
                         return false;
                     }
-
                     right  = (choice == q.correctIndex());
                     qLevel = q.level();
                 } else {
-                    // אין UI – נניח תשובה נכונה (אפשר לשנות לפי הצורך)
+                    // אין UI – נניח תשובה נכונה
                     right  = true;
                     qLevel = q.level();
                 }
             }
+
+            // *** עלות הפעלת שאלה לפי רמת משחק ***
+            int cost = activationCost(match.level());
+            match.addPoints(-cost);
 
             // אפקט מלא לפי הטבלה (נקודות + לבבות + בונוסים)
             DifficultyLevel diff = match.level();
@@ -214,13 +225,23 @@ public class MatchController {
         // ----- Surprise cell -----
         } else if (pend.contains(sKey) && cell instanceof SurpriseCell sc){
             if (sc.isRevealed() && !sc.wasOperated()){
+
                 sc.operate();
+
+                // *** עלות הפעלת Surprise לפי רמת משחק ***
+                int cost = activationCost(match.level());
+                match.addPoints(-cost);
+
+                // 50/50 הפתעה טובה / רעה
                 boolean good = rnd.nextBoolean();
-                int delta = good ? +5 : -5;
-                match.addPoints(delta);
+                SurpriseEffect se = computeSurpriseEffect(match.level(), good);
+
+                match.addPoints(se.pointsDelta);
+                match.addLives (se.livesDelta);
+
                 lastSurpriseMessage = good
-                        ? "🎁 Good surprise! +5 points"
-                        : "🎁 Bad surprise! -5 points";
+                        ? "🎁 Good surprise! +" + se.pointsDelta + " pts, +" + se.livesDelta + " ❤"
+                        : "🎁 Bad surprise! "  + se.pointsDelta + " pts, "  + se.livesDelta + " ❤";
             }
             pend.remove(sKey);
 
@@ -290,8 +311,7 @@ public class MatchController {
                 continue;
             }
 
-            // מוקש לעולם לא ניכנס אליו בהצפה (בגלל בדיקה למטה),
-            // אבל אם איכשהו הגענו – לא נרחיב ממנו.
+            // מוקש לעולם לא ניכנס אליו בהצפה
             if (cell instanceof MineCell) {
                 continue;
             }
@@ -367,7 +387,16 @@ public class MatchController {
         }
     }
 
-    // ======================== Question scoring (from table) ========================
+    // ======================== Question & Surprise scoring ========================
+
+    /** עלות הפעלת שאלה / הפתעה לפי רמת קושי */
+    private int activationCost(DifficultyLevel diff){
+        return switch (diff){
+            case EASY   -> 5;
+            case MEDIUM -> 8;
+            case HARD   -> 12;
+        };
+    }
 
     /**
      * מחזירה את כל האפקט של שאלה:
@@ -385,10 +414,8 @@ public class MatchController {
                 switch (ql){
                     case EASY:
                         if (right) {
-                            // (+3pts) AND (+1life)
                             return new QuestionEffect(+3, +1, false, false);
                         } else {
-                            // (-3pts) OR nothing
                             boolean punish = rnd.nextBoolean();
                             return punish
                                     ? new QuestionEffect(-3, 0, false, false)
@@ -397,10 +424,8 @@ public class MatchController {
 
                     case MEDIUM:
                         if (right) {
-                            // (+6pts) AND חשיפת משבצת מוקש (ללא ניקוד על החשיפה)
                             return new QuestionEffect(+6, 0, true, false);
                         } else {
-                            // (-6pts) OR nothing
                             boolean punish = rnd.nextBoolean();
                             return punish
                                     ? new QuestionEffect(-6, 0, false, false)
@@ -409,19 +434,15 @@ public class MatchController {
 
                     case HARD:
                         if (right) {
-                            // (+10pts) AND חשיפת 3x3 (ללא ניקוד/לב)
                             return new QuestionEffect(+10, 0, false, true);
                         } else {
-                            // -10pts
                             return new QuestionEffect(-10, 0, false, false);
                         }
 
                     case MASTER:
                         if (right) {
-                            // (+15pts) AND (+1life)
                             return new QuestionEffect(+15, +1, false, false);
                         } else {
-                            // (-15pts) AND (-1life)
                             return new QuestionEffect(-15, -1, false, false);
                         }
                 }
@@ -431,19 +452,15 @@ public class MatchController {
                 switch (ql){
                     case EASY:
                         if (right) {
-                            // (+8pts) AND (+1life)
                             return new QuestionEffect(+8, +1, false, false);
                         } else {
-                            // (-8pts)
                             return new QuestionEffect(-8, 0, false, false);
                         }
 
                     case MEDIUM:
                         if (right) {
-                            // (+10pts) AND (+1life)
                             return new QuestionEffect(+10, +1, false, false);
                         } else {
-                            // ((-10pts) AND (-1life)) OR nothing
                             boolean punish = rnd.nextBoolean();
                             if (punish){
                                 return new QuestionEffect(-10, -1, false, false);
@@ -454,19 +471,15 @@ public class MatchController {
 
                     case HARD:
                         if (right) {
-                            // (+15pts) AND (+1life)
                             return new QuestionEffect(+15, +1, false, false);
                         } else {
-                            // (-15pts) AND (-1life)
                             return new QuestionEffect(-15, -1, false, false);
                         }
 
                     case MASTER:
                         if (right) {
-                            // (+20pts) AND (+2lives)
                             return new QuestionEffect(+20, +2, false, false);
                         } else {
-                            // ((-20pts) AND (-1life)) OR ((-20pts) AND (-2lives))
                             boolean oneOrTwo = rnd.nextBoolean();
                             return new QuestionEffect(-20, oneOrTwo ? -1 : -2, false, false);
                         }
@@ -477,39 +490,31 @@ public class MatchController {
                 switch (ql){
                     case EASY:
                         if (right) {
-                            // (+10pts) AND (+1life)
                             return new QuestionEffect(+10, +1, false, false);
                         } else {
-                            // (-10pts) AND (-1life)
                             return new QuestionEffect(-10, -1, false, false);
                         }
 
                     case MEDIUM:
                         if (right) {
-                            // ((+15pts) AND (+1life)) OR ((+15pts) AND (+2lives))
                             boolean oneOrTwo = rnd.nextBoolean();
                             return new QuestionEffect(+15, oneOrTwo ? +1 : +2, false, false);
                         } else {
-                            // ((-15pts) AND (-1life)) OR ((-15pts) AND (-2lives))
                             boolean oneOrTwo = rnd.nextBoolean();
                             return new QuestionEffect(-15, oneOrTwo ? -1 : -2, false, false);
                         }
 
                     case HARD:
                         if (right) {
-                            // (+20pts) AND (+2lives)
                             return new QuestionEffect(+20, +2, false, false);
                         } else {
-                            // (-20pts) AND (-2lives)
                             return new QuestionEffect(-20, -2, false, false);
                         }
 
                     case MASTER:
                         if (right) {
-                            // (+40pts) AND (+3lives)
                             return new QuestionEffect(+40, +3, false, false);
                         } else {
-                            // (-40pts) AND (-3lives)
                             return new QuestionEffect(-40, -3, false, false);
                         }
                 }
@@ -520,12 +525,23 @@ public class MatchController {
         return new QuestionEffect(0,0,false,false);
     }
 
+    /** אפקט של Surprise לפי רמת קושי והאם טוב/רע */
+    private SurpriseEffect computeSurpriseEffect(DifficultyLevel diff, boolean good){
+        return switch (diff){
+            case EASY ->  good
+                    ? new SurpriseEffect(+8, +1)
+                    : new SurpriseEffect(-8, -1);
+            case MEDIUM -> good
+                    ? new SurpriseEffect(+12, +1)
+                    : new SurpriseEffect(-12, -1);
+            case HARD ->  good
+                    ? new SurpriseEffect(+16, +1)
+                    : new SurpriseEffect(-16, -1);
+        };
+    }
+
     // ======================== Bonus reveal helpers ========================
 
-    /**
-     * חשיפת מוקש אחד רנדומלי בלוח הנתון (אם יש לא-מגולה),
-     * WITHOUT scoring: no points and no life changes.
-     */
     private void revealRandomMineBonus(Board b, int playerIdx){
         List<int[]> mines = new ArrayList<>();
         for (int r=0; r<b.rows(); r++){
@@ -545,22 +561,10 @@ public class MatchController {
         }
     }
 
-    /**
-     * חשיפת אזור בגודל 3x3 לפי הדרישה:
-     * 1. מחפשים חלונות 3x3 שבהם *כל* 9 התאים לא חשופים.
-     *    אם יש כאלה – בוחרים אחד מהם באקראי ומגלים אותו.
-     * 2. אם אין חלון עם 9 תאים לא חשופים:
-     *    מחפשים את כל החלונות שבהם מספר התאים הלא-חשופים הוא המקסימלי (<9)
-     *    ובוחרים אחד מהם באקראי.
-     *
-     * גם כאן WITHOUT scoring: no points and no life changes.
-     * כן נוסיף pending לשאלות/הפתעות שנחשפו.
-     */
     private void revealRandom3x3Bonus(Board b, int playerIdx){
         int R = b.rows(), C = b.cols();
         if (R == 0 || C == 0) return;
 
-        // לוח קטן מ-3x3 – ממשיכים להתנהגות הישנה: לחשוף את כל הלוח כבונוס.
         if (R < 3 || C < 3){
             for (int r=0; r<R; r++){
                 for (int c=0; c<C; c++){
@@ -570,75 +574,16 @@ public class MatchController {
             return;
         }
 
-        List<int[]> fullWindows = new ArrayList<>();   // חלונות עם 9 תאים לא-חשופים
-        List<int[]> bestPartial = new ArrayList<>();   // חלונות עם מקסימום תאים לא-חשופים (<9)
-        int bestPartialCount = 0;
+        int centerR = 1 + rnd.nextInt(R - 2); // 1..R-2
+        int centerC = 1 + rnd.nextInt(C - 2); // 1..C-2
 
-        // עוברים על כל חלונות 3x3 האפשריים
-        for (int r = 0; r <= R - 3; r++) {
-            for (int c = 0; c <= C - 3; c++) {
-
-                int unrevealed = 0;
-
-                for (int dr = 0; dr < 3; dr++) {
-                    for (int dc = 0; dc < 3; dc++) {
-                        Cell cell = b.cell(r + dr, c + dc);
-                        if (!cell.isRevealed()) {
-                            unrevealed++;
-                        }
-                    }
-                }
-
-                if (unrevealed == 0) {
-                    // אין מה לחשוף בחלון הזה
-                    continue;
-                }
-
-                if (unrevealed == 9) {
-                    // חלון מלא 3x3 לא-חשוף – נכנס לרשימת ה-full
-                    fullWindows.add(new int[]{r, c});
-                } else {
-                    // חלון חלקי – נעדכן רשימת bestPartial
-                    if (unrevealed > bestPartialCount) {
-                        bestPartialCount = unrevealed;
-                        bestPartial.clear();
-                        bestPartial.add(new int[]{r, c});
-                    } else if (unrevealed == bestPartialCount) {
-                        bestPartial.add(new int[]{r, c});
-                    }
-                }
-            }
-        }
-
-        int[] chosen = null;
-
-        if (!fullWindows.isEmpty()) {
-            // יש חלונות 3x3 מלאים – בוחרים אחד מהם באקראי
-            chosen = fullWindows.get(rnd.nextInt(fullWindows.size()));
-        } else if (bestPartialCount > 0 && !bestPartial.isEmpty()) {
-            // אין חלון מלא, אבל יש חלונות עם כמות מקסימלית (<9) – בוחרים אחד מהם
-            chosen = bestPartial.get(rnd.nextInt(bestPartial.size()));
-        } else {
-            // אין בכלל מה לחשוף
-            return;
-        }
-
-        int sr = chosen[0];
-        int sc = chosen[1];
-
-        // חושפים את כל התאים הלא-חשופים בחלון שנבחר
-        for (int dr = 0; dr < 3; dr++) {
-            for (int dc = 0; dc < 3; dc++) {
-                int rr = sr + dr;
-                int cc = sc + dc;
-                bonusRevealCell(b, playerIdx, rr, cc);
+        for (int r=centerR-1; r<=centerR+1; r++){
+            for (int c=centerC-1; c<=centerC+1; c++){
+                bonusRevealCell(b, playerIdx, r, c);
             }
         }
     }
 
-    /**
-     * חשיפה של תא בונוס (ללא ניקוד/חיים), כן מוסיף pending לשאלה/הפתעה.
-     */
     private void bonusRevealCell(Board b, int playerIdx, int r, int c){
         Cell cell = b.cell(r,c);
         if (cell.isRevealed()) return;
@@ -652,10 +597,8 @@ public class MatchController {
         }
     }
 
-    /**
-     * האם תא הוא QuestionCell שכבר טופל (השאלה כבר נענתה)?
-     * "טופל" = התא כבר מגולה, ואין עליו pending לשחקן הזה.
-     */
+    // --------- helpers used by the view for "used" question/surprise ---------
+
     public boolean isQuestionUsed(int playerIdx, int row, int col){
         Board b = (playerIdx==0)? match.board1() : match.board2();
         Cell cell = b.cell(row,col);
@@ -664,14 +607,9 @@ public class MatchController {
         Set<Key> pend = pendSet(playerIdx);
         Key qKey = new Key(row,col,true);
 
-        // אם הוא שאלה, מגולה, ולא ב-pending → כבר השתמשנו בו
         return cell.isRevealed() && !pend.contains(qKey);
     }
 
-    /**
-     * האם תא הוא SurpriseCell שכבר הופעל?
-     * משתמשים גם ב-wasOperated וגם ב-pending.
-     */
     public boolean isSurpriseUsed(int playerIdx, int row, int col){
         Board b = (playerIdx==0)? match.board1() : match.board2();
         Cell cell = b.cell(row,col);
@@ -680,7 +618,6 @@ public class MatchController {
         Set<Key> pend = pendSet(playerIdx);
         Key sKey = new Key(row,col,false);
 
-        // אם ההפתעה כבר הופעלה, או שהיא מגולה ולא ב-pending – נחשב כ"משומש"
         return sc.wasOperated() || (cell.isRevealed() && !pend.contains(sKey));
     }
 
