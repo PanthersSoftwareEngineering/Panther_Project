@@ -44,10 +44,11 @@ public class QuestionController {
     }
 
     /*  Replace existing question (edit) */
+ // controller/QuestionController.java
     public void replace(String oldId, Question updated){
-        sys.deleteQuestion(oldId);
-        sys.addQuestion(updated);
+        sys.replaceQuestion(oldId, updated);  
     }
+
 
     /* Provide next numeric ID for auto numbering in UI if needed */
     public int nextId(){

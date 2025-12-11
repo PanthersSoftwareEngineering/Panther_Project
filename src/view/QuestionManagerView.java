@@ -212,37 +212,45 @@ public class QuestionManagerView extends JFrame {
     /* Dialog creation + validation logic */
     private Question showEditorDialog(Question original) {
 
-        // ---------- Fields ----------
+        // ---------- Fields (created once) ----------
 
-        /* Auto-ID: use nextQuestionId() when adding */
         String suggestedId = (original == null)
                 ? String.valueOf(controller.nextId())
                 : original.id();
 
         JTextField tfId = new JTextField(suggestedId, 20);
-        tfId.setEditable(false);                   // 🔥 ID is auto-generated and locked
+        tfId.setEditable(false);
 
         JTextField tfText = new JTextField(
                 original == null ? "" : original.text(), 30
         );
 
-        JComboBox<String> cbLevel =
-                new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD", "MASTER"});
-        if (original != null)
+        // Difficulty: placeholder + real values
+        String[] levelItems = {"-- Select level --", "EASY", "MEDIUM", "HARD", "MASTER"};
+        JComboBox<String> cbLevel = new JComboBox<>(levelItems);
+
+        if (original != null) {
             cbLevel.setSelectedItem(original.level().name());
+        } else {
+            cbLevel.setSelectedIndex(0);
+        }
 
         JTextField tfOpt1 = new JTextField(original == null ? "" : original.options().get(0), 20);
         JTextField tfOpt2 = new JTextField(original == null ? "" : original.options().get(1), 20);
         JTextField tfOpt3 = new JTextField(original == null ? "" : original.options().get(2), 20);
         JTextField tfOpt4 = new JTextField(original == null ? "" : original.options().get(3), 20);
 
-        SpinnerNumberModel snm = new SpinnerNumberModel(
-                original == null ? 0 : original.correctIndex(),
-                0, 3, 1
-        );
-        JSpinner spCorrect = new JSpinner(snm);
+        // Correct answer A–D with placeholder
+        String[] correctItems = {"-- Select correct answer --", "A", "B", "C", "D"};
+        JComboBox<String> cbCorrect = new JComboBox<>(correctItems);
 
-        // ---------- Layout ----------
+        if (original != null) {
+            cbCorrect.setSelectedIndex(original.correctIndex() + 1); // 0→A, 1→B, ...
+        } else {
+            cbCorrect.setSelectedIndex(0); // placeholder for NEW question
+        }
+
+        // ---------- Layout panel (also reused) ----------
         JPanel p = new JPanel(new GridLayout(0, 2, 6, 6));
         p.add(new JLabel("ID:"));                   p.add(tfId);
         p.add(new JLabel("Text:"));                 p.add(tfText);
@@ -251,62 +259,109 @@ public class QuestionManagerView extends JFrame {
         p.add(new JLabel("Option 2:"));             p.add(tfOpt2);
         p.add(new JLabel("Option 3:"));             p.add(tfOpt3);
         p.add(new JLabel("Option 4:"));             p.add(tfOpt4);
-        p.add(new JLabel("Correct Index [0..3]:")); p.add(spCorrect);
+        p.add(new JLabel("Correct Answer [A–D]:")); p.add(cbCorrect);
 
-        int res = JOptionPane.showConfirmDialog(
-                this, p,
-                (original == null ? "Add Question" : "Edit Question"),
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-        );
+     // ---------- Dialog + validation loop ----------
+        while (true) {
 
-        if (res != JOptionPane.OK_OPTION)
-            return null;
-
-        // ---------- Read fields ----------
-        String id = tfId.getText().trim();
-        String text = tfText.getText().trim();
-        String lvlS = cbLevel.getSelectedItem().toString();
-        int correct = (Integer) spCorrect.getValue();
-
-        // ---------- VALIDATION (new improved) ----------
-        if (text.isEmpty()
-                || tfOpt1.getText().trim().isEmpty()
-                || tfOpt2.getText().trim().isEmpty()
-                || tfOpt3.getText().trim().isEmpty()
-                || tfOpt4.getText().trim().isEmpty()
-        ) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "All fields (Text and all 4 options) must be filled.",
-                    "Validation Error",
-                    JOptionPane.WARNING_MESSAGE
+            int res = JOptionPane.showConfirmDialog(
+                    this, p,
+                    (original == null ? "Add Question" : "Edit Question"),
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
             );
-            return null;
+
+            if (res != JOptionPane.OK_OPTION) {
+                // user pressed Cancel or closed the dialog
+                return null;
+            }
+
+            // Read current values
+            String id       = tfId.getText().trim();
+            String text     = tfText.getText().trim();
+            String levelStr = (String) cbLevel.getSelectedItem();
+            String correctStr = (String) cbCorrect.getSelectedItem();
+
+            String o1 = tfOpt1.getText().trim();
+            String o2 = tfOpt2.getText().trim();
+            String o3 = tfOpt3.getText().trim();
+            String o4 = tfOpt4.getText().trim();
+
+            // ---- VALIDATION ----
+
+            // 1. All fields filled
+            if (text.isEmpty() || o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "All fields (Text and all 4 options) must be filled.",
+                        "Missing data",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                continue;
+            }
+
+            // 2. All 4 options must be different (case-insensitive)
+            java.util.Set<String> uniq = new java.util.HashSet<>();
+            uniq.add(o1.toLowerCase());
+            uniq.add(o2.toLowerCase());
+            uniq.add(o3.toLowerCase());
+            uniq.add(o4.toLowerCase());
+
+            if (uniq.size() < 4) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "All 4 answer options must be different.\n" +
+                        "Please change the duplicate answers.",
+                        "Duplicate answers",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                continue;
+            }
+
+            // 3. Difficulty chosen
+            if (levelStr == null || levelStr.equals("-- Select level --")) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "You must choose a difficulty level.",
+                        "Missing difficulty level",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                continue;
+            }
+
+            // 4. Correct answer chosen
+            if (correctStr == null || correctStr.equals("-- Select correct answer --")) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "You must choose the correct answer (A–D).",
+                        "Missing correct answer",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                continue;
+            }
+         // ---- All validations passed ----
+
+            int correctIndex = switch (correctStr) {
+                case "A" -> 0;
+                case "B" -> 1;
+                case "C" -> 2;
+                case "D" -> 3;
+                default -> -1; // shouldn't happen
+            };
+
+            java.util.List<String> opts = new ArrayList<>(4);
+            opts.add(o1);
+            opts.add(o2);
+            opts.add(o3);
+            opts.add(o4);
+
+            QuestionLevel lvl = QuestionLevel.valueOf(levelStr);
+
+            return new Question(id, text, opts, correctIndex, lvl);
         }
-
-        // Correct index check (safety)
-        if (correct < 0 || correct > 3) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Correct index must be between 0 and 3.",
-                    "Validation Error",
-                    JOptionPane.WARNING_MESSAGE
-            );
-            return null;
-        }
-
-        // ---------- Build Question ----------
-        List<String> opts = new ArrayList<>(4);
-        opts.add(tfOpt1.getText());
-        opts.add(tfOpt2.getText());
-        opts.add(tfOpt3.getText());
-        opts.add(tfOpt4.getText());
-
-        QuestionLevel lvl = QuestionLevel.valueOf(lvlS);
-
-        return new Question(id, text, opts, correct, lvl);
     }
+
 
     
     
@@ -379,6 +434,7 @@ public class QuestionManagerView extends JFrame {
             return cols[c];
         }
 
+        
         @Override
         public Object getValueAt(int row, int col) {
             Question q = data.get(row);
@@ -390,10 +446,11 @@ public class QuestionManagerView extends JFrame {
                 case 4 -> q.options().get(1);
                 case 5 -> q.options().get(2);
                 case 6 -> q.options().get(3);
-                case 7 -> q.correctIndex();
+                case 7 -> String.valueOf((char) ('A' + q.correctIndex())); // 0→A, 1→B...
                 default -> "";
             };
         }
+
 
         @Override
         public boolean isCellEditable(int r, int c) {
