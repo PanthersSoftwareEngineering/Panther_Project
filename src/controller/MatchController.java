@@ -32,11 +32,19 @@ public class MatchController {
 
     /** Random generator for surprises and 50/50 cases in question table. */
     private final Random rnd = new Random();
-
+    
     // Directions of 8 neighbors (for flood reveal).
     private static final int[] DR = {-1,-1,-1,0,0,1,1,1};
     private static final int[] DC = {-1, 0, 1,-1,1,-1,0,1};
+    
+    /** Last finished game record (used by GameView to open EndView after delay). */
+    private SysData.GameRecord lastRecord = null;
 
+    public SysData.GameRecord getLastRecord(){
+        return lastRecord;
+    }
+
+    
     /** Key for pending interactions (question / surprise) per player. */
     private static final class Key {
         final int r,c;
@@ -153,9 +161,6 @@ public class MatchController {
 
     /**
      * Tries to interact with a pending Question/SURPRISE cell.
-     * For QuestionCell – pulls a random Question from SysData (any level),
-     * and applies scoring based on game difficulty + question level
-     * according to the design table.
      */
     public boolean tryInteract(int playerIdx,int row,int col){
         if (playerIdx != match.activeIndex()) return false;
@@ -175,7 +180,6 @@ public class MatchController {
             QuestionLevel qLevel;
 
             if (q == null){
-                // אין שאלות – מתייחסים כאילו ענה נכון על שאלה קלה
                 lastSurpriseMessage = "No questions in bank. Counted as correct.";
                 right  = true;
                 qLevel = QuestionLevel.EASY;
@@ -188,7 +192,7 @@ public class MatchController {
                 if (questionUI != null){
                     int choice = questionUI.ask(dto);
 
-                    // cancel (או סגירת חלון) → לא לענות, לא לשנות תור, לא לגבות עלות
+                    // cancel → לא לענות, לא לשנות תור, לא לגבות עלות
                     if (choice < 0){
                         return false;
                     }
@@ -205,7 +209,7 @@ public class MatchController {
             int cost = activationCost(match.level());
             match.addPoints(-cost);
 
-            // אפקט מלא לפי הטבלה (נקודות + לבבות + בונוסים)
+            // אפקט מלא לפי הטבלה
             DifficultyLevel diff = match.level();
             QuestionEffect eff = computeQuestionEffect(diff, qLevel, right);
 
@@ -219,7 +223,6 @@ public class MatchController {
                 revealRandom3x3Bonus(b, playerIdx);
             }
 
-            // השאלה טופלה – מסירים מה-pending
             pend.remove(qKey);
 
         // ----- Surprise cell -----
@@ -228,11 +231,10 @@ public class MatchController {
 
                 sc.operate();
 
-                // *** עלות הפעלת Surprise לפי רמת משחק ***
+                // עלות הפעלת Surprise
                 int cost = activationCost(match.level());
                 match.addPoints(-cost);
 
-                // 50/50 הפתעה טובה / רעה
                 boolean good = rnd.nextBoolean();
                 SurpriseEffect se = computeSurpriseEffect(match.level(), good);
 
@@ -249,7 +251,6 @@ public class MatchController {
             return false;
         }
 
-        // אחרי אינטראקציה *אמיתית* (לא cancel) – בודקים סוף משחק וסיום תור
         match.checkFinish();
         if (match.isFinished()) {
             finishAndClose();
@@ -272,6 +273,12 @@ public class MatchController {
 
         if (before != cell.isFlagged())
             applyFlagScoring(cell, cell.isFlagged());
+
+        match.checkFinish();
+        if (match.isFinished()) {
+            finishAndClose();
+            return;
+        }
 
         endTurn();
     }
@@ -296,27 +303,22 @@ public class MatchController {
             cell.reveal();
             applyRevealScoring(cell);
 
-            // אם זו שאלה – מסמנים כ-pending אבל לא עוצרים את ההצפה
             if (cell instanceof QuestionCell){
                 addPending(playerIdx,new Key(r,c,true));
             }
 
-            // אם זו תחנת הפתעה – גם מוסיפים כ-pending אבל ממשיכים להתרחב
             if (cell instanceof SurpriseCell){
                 addPending(playerIdx,new Key(r,c,false));
             }
 
-            // מספרים לא מרחיבים הלאה (כמו בשולה מוקשים רגיל)
             if (cell instanceof NumberCell) {
                 continue;
             }
 
-            // מוקש לעולם לא ניכנס אליו בהצפה
             if (cell instanceof MineCell) {
                 continue;
             }
 
-            // מרחיבים לשכנים עבור תאים ריקים + שאלות + הפתעות (אבל לא מוקשים)
             for(int k=0;k<8;k++){
                 int nr = r + DR[k], nc = c + DC[k];
                 if(nr<0 || nr>=R || nc<0 || nc>=C) continue;
@@ -332,11 +334,23 @@ public class MatchController {
     // ======================== Finish ========================
 
     private void finishAndClose(){
+        boolean won = match.lives() > 0;
+
+        // המרת כל הלבבות לנקודות לפי עלות חיים
+        match.convertLivesToPoints();
+
+        // לחשוף את כל התאים בשני הלוחות
         revealAllBoards();
-        SysData.GameRecord rec = match.toRecord(match.lives() > 0);
+
+        // יצירת רשומת משחק ושמירה בהיסטוריה
+        SysData.GameRecord rec = match.toRecord(won);
         sys.addRecord(rec);
-        app.openEndScreen(rec);
+
+        // שומרים את הרשומה כדי שה-GameView יפתח EndView אחרי 10 שניות
+        lastRecord = rec;
     }
+
+
 
     private void revealAllBoards(){
         Board b1 = match.board1();
@@ -398,14 +412,6 @@ public class MatchController {
         };
     }
 
-    /**
-     * מחזירה את כל האפקט של שאלה:
-     *  - שינוי נקודות
-     *  - שינוי לבבות
-     *  - בונוסים של חשיפת מוקש / 3x3 (ללא ניקוד/לב)
-     *
-     * ממומש אחד-לא-אחד לפי הטבלה.
-     */
     private QuestionEffect computeQuestionEffect(DifficultyLevel diff,
                                                  QuestionLevel ql,
                                                  boolean right){
@@ -441,7 +447,7 @@ public class MatchController {
 
                     case MASTER:
                         if (right) {
-                            return new QuestionEffect(+15, +1, false, false);
+                            return new QuestionEffect(+15, +2, false, false);
                         } else {
                             return new QuestionEffect(-15, -1, false, false);
                         }
@@ -521,7 +527,6 @@ public class MatchController {
                 break;
         }
 
-        // לא אמור להגיע לכאן
         return new QuestionEffect(0,0,false,false);
     }
 
@@ -557,7 +562,7 @@ public class MatchController {
         int[] chosen = mines.get(rnd.nextInt(mines.size()));
         Cell mine = b.cell(chosen[0], chosen[1]);
         if (!mine.isRevealed()){
-            mine.reveal();  // בלי applyRevealScoring → אין נקודות/חיים
+            mine.reveal();
         }
     }
 
@@ -574,8 +579,8 @@ public class MatchController {
             return;
         }
 
-        int centerR = 1 + rnd.nextInt(R - 2); // 1..R-2
-        int centerC = 1 + rnd.nextInt(C - 2); // 1..C-2
+        int centerR = 1 + rnd.nextInt(R - 2);
+        int centerC = 1 + rnd.nextInt(C - 2);
 
         for (int r=centerR-1; r<=centerR+1; r++){
             for (int c=centerC-1; c<=centerC+1; c++){
@@ -588,7 +593,7 @@ public class MatchController {
         Cell cell = b.cell(r,c);
         if (cell.isRevealed()) return;
 
-        cell.reveal(); // אין applyRevealScoring → רק מידע
+        cell.reveal();
 
         if (cell instanceof QuestionCell){
             addPending(playerIdx, new Key(r,c,true));

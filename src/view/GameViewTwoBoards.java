@@ -7,6 +7,7 @@ import java.awt.event.MouseEvent;
 
 import controller.AppController;
 import controller.MatchController;
+import model.SysData;
 
 public class GameViewTwoBoards extends JFrame implements QuestionUI {
 
@@ -26,7 +27,8 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
     private JButton[][] btn1, btn2;
 
     private Timer timer;
-
+    /** Was end-of-game sequence already started (to avoid duplicates)? */
+    private boolean endSequenceStarted = false;
     public GameViewTwoBoards(MatchController ctrl, AppController app) {
         super("Minesweeper - Match");
         this.ctrl = ctrl;
@@ -272,12 +274,40 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
     }
 
     private void endCheck(){
-        if (ctrl.isFinished()) {
-            timer.stop();
-            refreshAll();
-            dispose();
+        // אם המשחק עדיין לא נגמר – אין מה לעשות
+        if (!ctrl.isFinished()) {
+            return;
         }
+
+        // אם כבר התחלנו רצף סיום – לא להפעיל שוב
+        if (endSequenceStarted) {
+            return;
+        }
+        endSequenceStarted = true;
+
+        // עוצרים את הטיימר של השעון
+        if (timer != null) {
+            timer.stop();
+        }
+
+        // מעדכנים את המסך לפי מצב הלוחות אחרי finishAndClose (כל התאים חשופים)
+        refreshAll();
+
+        // טיימר חד-פעמי שאחרי 10 שניות יסגור את המסך ויפתח את EndView
+        Timer delay = new Timer(10_000, e -> {
+            // סוגרים את חלון המשחק
+            dispose();
+
+            // לוקחים את רשומת המשחק מה-Controller
+            SysData.GameRecord rec = ctrl.getLastRecord();
+            if (app != null && rec != null) {
+                app.openEndScreen(rec);
+            }
+        });
+        delay.setRepeats(false);
+        delay.start();
     }
+
 
     // ============================================================
     // QUESTION UI
