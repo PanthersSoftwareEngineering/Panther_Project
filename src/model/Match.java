@@ -35,6 +35,11 @@ public class Match {
     /** Flag indicating that the match ended (by solving or losing all lives). */
     private boolean finished = false;
 
+    // ========= Lives & cost configuration =========
+
+    /** Maximum number of lives during the match. */
+    private static final int MAX_LIVES = 10;
+
     /**
      * Creates a new match between two players at the specified difficulty.
      * Initializes the boards and starting lives based on DifficultyConfig.
@@ -77,16 +82,50 @@ public class Match {
     public int lives(){ return lives; }
     public int points(){ return points; }
 
+    // ---------- Lives / points logic ----------
+
+    /** כמה נקודות שווה חיים אחד לפי רמת קושי */
+    private int lifeValue(){
+        return switch (level){
+            case EASY   -> 5;   // עלות "חיים" במשחק קל
+            case MEDIUM -> 8;   // בינוני
+            case HARD   -> 12;  // קשה
+        };
+    }
+
     /**
-     * Adds (or subtracts) lives.
-     * Lives are clamped to be non-negative.
+     * הוספת/הפחתת חיים:
+     * - אם מוסיפים חיים ועוברים את 10 → ההפרש מומר לנקודות לפי רמת הקושי
+     * - אם מורידים חיים → לא יורדים מתחת ל-0
      */
-    public void addLives(int d){
-        lives += d;
-        if (lives > 10) {
-            lives = 10;
+    public void addLives(int delta){
+        if (delta == 0) return;
+
+        // הורדת חיים
+        if (delta < 0){
+            lives = Math.max(0, lives + delta);
+            return;
         }
-        if(lives < 0) lives = 0;
+
+        // כאן delta > 0 → מוסיפים חיים
+        lives += delta;
+
+        // אם עברנו את התקרה, ההפרש הופך לנקודות
+        if (lives > MAX_LIVES){
+            int overflow = lives - MAX_LIVES;
+            lives = MAX_LIVES;
+
+            int lv = lifeValue();
+            points += overflow * lv;
+        }
+    }
+
+    /** המרת כל החיים שנותרו לנקודות בסיום המשחק */
+    public void convertLivesToPoints(){
+        if (lives <= 0) return;
+        int lv = lifeValue();
+        points += lives * lv;
+        lives = 0;
     }
 
     /**
@@ -110,33 +149,70 @@ public class Match {
         return (System.currentTimeMillis() - startTimeMs) / 1000;
     }
 
+    // ========= Finish conditions =========
+
     /**
      * Recomputes whether the match is finished.
      * The match ends if:
      * - lives reach zero, or
-     * - either board is completely solved.
+     * - on at least one board:
+     *      • every non-mine cell is revealed (פתרון רגיל), OR
+     *      • all mines are flagged, OR
+     *      • all mines are revealed.
      */
     public void checkFinish(){
-        if(lives == 0){
+        // 1. נגמרו חיים
+        if (lives == 0){
             finished = true;
             return;
         }
-        if(boardSolved(b1) || boardSolved(b2))
+
+        // 2. אחד הלוחות נפתר (כל התאים הבטוחים נחשפו)
+        /**if (boardSolved(b1) || boardSolved(b2)){
             finished = true;
+            return;
+        }*/
+
+        // 3. בכל מוקש בלוח 1 או 2: או דגל או חשוף
+        if (allMinesHandled(b1) || allMinesHandled(b2)){
+            finished = true;
+        }
     }
+
 
     /**
      * Checks whether a board is solved: every non-mine cell is revealed.
      */
     private boolean boardSolved(Board b){
-        for(int r = 0; r < b.rows(); r++)
+        for(int r = 0; r < b.rows(); r++){
             for(int c = 0; c < b.cols(); c++){
                 Cell cell = b.cell(r,c);
                 if(!cell.isRevealed() && !(cell instanceof MineCell))
                     return false;
             }
+        }
         return true;
     }
+
+    /** 
+     * מחזירה true אם כל תאי המוקש בלוח 
+     * או מסומנים בדגל או חשופים.
+     */
+    private boolean allMinesHandled(Board b){
+        for (int r = 0; r < b.rows(); r++){
+            for (int c = 0; c < b.cols(); c++){
+                Cell cell = b.cell(r,c);
+                if (cell instanceof MineCell){
+                    // אם המוקש לא חשוף וגם לא מסומן בדגל → עוד לא "טופל"
+                    if (!cell.isRevealed() && !cell.isFlagged()){
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
 
     /**
      * Creates a GameRecord snapshot from this match for storing in history.
