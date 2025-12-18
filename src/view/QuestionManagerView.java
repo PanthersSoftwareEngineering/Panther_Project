@@ -1,6 +1,7 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.ArrayList;
@@ -12,433 +13,353 @@ import model.Question;
 import model.QuestionLevel;
 
 /**
- * Question management window 
- * Allows viewing, adding, editing, and deleting trivia questions.
- *
- * This view does NOT access SysData directly
- * All operations go through QuestionController
+ * Management window for all questions. Inherits full-screen behavior from BaseGameFrame 
+ * and applies the Dark Teal/Turquoise styling.
  */
-public class QuestionManagerView extends JFrame {
+public class QuestionManagerView extends BaseGameFrame { 
 
-    /* Controller reference for all CRUD actions */
     private final QuestionController controller;
-
-    /* Table model that adapts Question objects to table rows/cols */
-    private /*final parametr*/ QuestionTableModel model;
     
-    /* Swing table showing all questions */
-    private /*final parametr*/ JTable table;
+    // !!! תיקון: הגדרת טייפ ספציפי לטבלה לשימוש במתודות המותאמות !!!
+    private final QuestionTable table; 
+    
+    private final QuestionTableModel model;
 
+    // --- Custom Colors  ---
+    private static final Color DARK_BG = new Color(20, 30, 35, 240); 
+    private static final Color ACCENT_COLOR = new Color(80, 200, 180); 
+    private static final Color TABLE_BG = new Color(30, 45, 50);
 
-    /**
-     * Builds the Question Manager UI:
-     * - Top bar with title and Back button
-     * - Center table with all questions
-     * - Bottom bar with Add/Edit/Delete buttons
-     */
- 
     public QuestionManagerView(QuestionController controller) {
-        super("Question Manager");
-
-        /* Save controller reference */
+        super(AppController.getInstance(), "Question Manager");
         this.controller = controller;
 
-        /* Basic Swing window settings */
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout(8, 8));
-        setMinimumSize(new Dimension(820, 420));
+        // ===== 1. Main Content Frame (Dark with Turquoise border, Centered) =====
+        JPanel centerFrame = new JPanel();
+        centerFrame.setLayout(new BorderLayout(15, 15));
+        centerFrame.setBackground(DARK_BG);
+        centerFrame.setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 4, true));
+        
+        // Root panel for centering the centerFrame within the full-screen BaseGameFrame
+        JPanel rootPanel = new JPanel(new GridBagLayout());
+        rootPanel.setOpaque(true);
+        rootPanel.setBackground(DARK_BG.darker());
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(50, 50, 50, 50);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0; 
+        
+        rootPanel.add(centerFrame, gbc);
+        setContentPane(rootPanel);
 
-        // ===================== TOP BAR =====================
 
-        /* Top panel holds title + Back button */
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+        // ===== 2. Top Section (Title and Back Button) =====
+        JPanel top = new JPanel(new BorderLayout(15, 0));
+        top.setOpaque(false);
+        top.setBorder(BorderFactory.createEmptyBorder(15, 15, 0, 15));
 
-        /* Back button returns to main menu */
-        JButton back = new JButton("Back to Main");
-        back.addActionListener(e -> {
-            dispose();
-            AppController.getInstance().showMainMenu();
-        });
-
-        /* Title label */
+        // Title Label
         JLabel title = new JLabel("Question Management", SwingConstants.LEFT);
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
-
+        title.setFont(new Font("Segoe UI", Font.BOLD, 40));
+        title.setForeground(ACCENT_COLOR);
         top.add(title, BorderLayout.WEST);
-        top.add(back, BorderLayout.EAST);
-        add(top, BorderLayout.NORTH);
 
-     // ===================== TABLE =====================
-
-        /* Create model from controller list */
+        // Back Button
+        ButtonStyled backBtn = new ButtonStyled("Back to Main");
+        backBtn.setPreferredSize(new Dimension(220, 55));
+        backBtn.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        
+        backBtn.addActionListener(e -> {
+            dispose();
+            app.showMainMenu();
+        });
+        top.add(backBtn, BorderLayout.EAST);
+        centerFrame.add(top, BorderLayout.NORTH);
+        
+        // ===== 3. Table in Center (Styled JTable) =====
         model = new QuestionTableModel(controller.list());
+        
+        // !!! תיקון: יצירת המופע של הטבלה המותאמת !!!
+        table = new QuestionTable(model); 
+        
+        // Styling the table
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        table.setForeground(Color.WHITE);
+        table.setBackground(TABLE_BG);
+        
+        // Setting minimal high for table
+        table.setRowHeight(30); 
+        Color newSelectionColor = new Color(30, 70, 70); 
+        table.setSelectionBackground(newSelectionColor); 
+        table.setSelectionForeground(Color.WHITE);
+        
+        // Styling the table header
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 16));
+        table.getTableHeader().setBackground(TABLE_BG.brighter());
+        table.getTableHeader().setForeground(ACCENT_COLOR.brighter());
+        
+        // Scroll pane styling
+        JScrollPane scrollPane = new JScrollPane(table);
+        // activaring horizontal scroller
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        // activaring higeth scroller
+        scrollPane.setBorder(new LineBorder(ACCENT_COLOR, 2, false));
+        scrollPane.getViewport().setBackground(TABLE_BG); 
+        
+        centerFrame.add(scrollPane, BorderLayout.CENTER);
 
-        /* Create table using the model */
-        table = new JTable(model);
-        table.setFillsViewportHeight(true);
+        
+        // ===== 4. Bottom Row with CRUD Buttons (using RoundedButton) =====
+        JPanel buttonsRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 15));
+        buttonsRow.setOpaque(false); 
 
-        /*  Put table in a scroll pane */
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        // Use RoundedButton
+        RoundedButton btnAdd = new RoundedButton("Add Question", 200, 60, 20);
+        RoundedButton btnEdit = new RoundedButton("Edit Selected", 200, 60, 20);
+        RoundedButton btnDelete = new RoundedButton("Delete Selected", 200, 60, 20);
 
-// ===================== BUTTONS BAR =====================
+        buttonsRow.add(btnAdd);
+        buttonsRow.add(btnEdit);
+        buttonsRow.add(btnDelete);
+        centerFrame.add(buttonsRow, BorderLayout.SOUTH);
 
-        /* Bottom panel for actions */
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-
-        /* CRUD buttons */
-        JButton btnAdd = new JButton("Add");
-        JButton btnEdit = new JButton("Edit");
-        JButton btnDelete = new JButton("Delete");
-
-        buttons.add(btnAdd);
-        buttons.add(btnEdit);
-        buttons.add(btnDelete);
-
-        add(buttons, BorderLayout.SOUTH);
-
-        /* Wire buttons to handlers */
+        // --- Fixing Table Dimensions ONCE ---
+        setupTableColumnWidths();
+        
+        // Call the optimal calculation immediately after layout is set
+        SwingUtilities.invokeLater(() -> table.calculateOptimalDimensions());
+        
+        // Wire up actions.
         btnAdd.addActionListener(e -> onAdd());
         btnEdit.addActionListener(e -> onEdit());
         btnDelete.addActionListener(e -> onDelete());
-        
-      pack();
-        setLocationRelativeTo(null);
-    }
-
-    /** Shows this window */
-  
-    public void showSelf() {
-        setVisible(true);
     }
     
- // =================    CRUD HANDLERS     ==================
-
     /**
-     * Add handler:
-     * Opens the editor dialog in Add mode (original = null).
-     * If user confirms, adds question through controller and reloads table.
+     * Sets fixed widths for certain columns and larger relative widths for text columns.
+     * This is the initial setting before the optimal calculation runs.
      */
-    /* Add flow */
-    private void onAdd() {
-        Question q = showEditorDialog(null);
-        if (q != null) {
+    private void setupTableColumnWidths() {
+        if (table.getColumnModel().getColumnCount() < 8) return;
+
+        // set defauld width for shorter rows
+        // 0: ID, 2: Level, 7: Correct
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(0).setMaxWidth(60);
+
+        table.getColumnModel().getColumn(2).setPreferredWidth(80);
+        table.getColumnModel().getColumn(2).setMaxWidth(90);
+
+        table.getColumnModel().getColumn(7).setPreferredWidth(60);
+        table.getColumnModel().getColumn(7).setMaxWidth(70);
+        
+        // setting width sizes (Text and Options) - setting a good initial guess
+        table.getColumnModel().getColumn(1).setPreferredWidth(300); // Text Column
+        table.getColumnModel().getColumn(3).setPreferredWidth(200);
+        table.getColumnModel().getColumn(4).setPreferredWidth(200);
+        table.getColumnModel().getColumn(5).setPreferredWidth(200);
+        table.getColumnModel().getColumn(6).setPreferredWidth(200);
+    }
+    
+    /** Shows the window. */
+    public void showSelf(){ setVisible(true); }
+
+    // =========================================================
+    // CRUD Handlers
+    // =========================================================
+    
+    /**
+     * Handler for the "Add" button.
+     */
+    private void onAdd(){
+        int maxId = 0;
+        for (Question q : controller.list()){
+            try{
+                int idVal = Integer.parseInt(q.id());
+                if (idVal > maxId) maxId = idVal;
+            } catch(NumberFormatException ignored){ }
+        }
+        
+        // Uses the separate QuestionEditorDialog class
+        Question q = QuestionEditorDialog.showDialog(this, null, maxId); 
+        
+        if (q != null){
             controller.add(q);
             model.reload(controller.list());
+            // recalculating table width and high again
+            SwingUtilities.invokeLater(() -> table.calculateOptimalDimensions());
         }
     }
 
     /**
-     * Edit handler:
-     * Requires a row selection.
-     * Opens editor dialog with existing question values pre-filled.
-     * On confirm, replaces old question with updated one via controller.
+     * Handler for the "Edit" button.
      */
-    /* Edit flow */
-    private void onEdit() {
+    private void onEdit(){
         int row = table.getSelectedRow();
-
-        /* Validation: must select a row */
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select a row to edit.");
+        if (row < 0){
+        	StyledAlertDialog.show(
+                    this, 
+                    "Missing Selection", 
+                    "Select a row to edit.", 
+                    false 
+            );
             return;
         }
-
-        /* Get the selected question */
         Question selected = model.getAt(row);
-
-        /* Open dialog with existing data */
-        Question updated = showEditorDialog(selected);
-
-        /* Replace if user confirmed */
-        if (updated != null) {
+        
+        // Uses the separate QuestionEditorDialog class
+        Question updated = QuestionEditorDialog.showDialog(this, selected, 0); 
+        
+        if (updated != null){
             controller.replace(selected.id(), updated);
             model.reload(controller.list());
+            // recalculating table width and high again
+            SwingUtilities.invokeLater(() -> table.calculateOptimalDimensions());
         }
     }
 
     /**
-     * Delete handler:
-     * Requires a row selection and a confirmation dialog.
-     * Controller enforces MIN_QUESTIONS limit through SysData.
+     * Handler for the "Delete" button.
      */
-    /* Delete flow */
-    private void onDelete() {
-        int row = table.getSelectedRow();
+    private void onDelete(){
+    	int row = table.getSelectedRow();
+        if (row < 0){
+            // Using StyledAlertDialog 
+            StyledAlertDialog.show(this, "Missing Selection", "Select a row to delete.", false); 
+            return;
+        }
 
-        /* Validation: must select a row */
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select a row to delete.");
+        int total = model.getRowCount();
+        if (total <= 20){
+            StyledAlertDialog.show(
+                    this, 
+                    "Cannot Delete Question", 
+                    "You must keep at least 20 questions in the system. Delete is not allowed.", 
+                    true 
+            );
             return;
         }
 
         Question selected = model.getAt(row);
-
-        /* Ask confirmation */
-        int ok = JOptionPane.showConfirmDialog(
+        int ok = StyledConfirmDialog.show( 
                 this,
-                "Delete question: " + selected.id() + " ?",
-                "Confirm",
+                "Are you sure you want to delete question: "+selected.id()+" ( " + selected.text().substring(0, Math.min(selected.text().length(), 20)) + ") ?) ?",
                 JOptionPane.OK_CANCEL_OPTION
         );
 
-        if (ok == JOptionPane.OK_OPTION) {
-            boolean removed = controller.delete(selected.id());
-
-            /* If delete failed, explain MIN_QUESTIONS restriction */
-            if (!removed) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cannot delete. System must keep at least 20 questions.",
-                        "Delete Blocked",
-                        JOptionPane.WARNING_MESSAGE
-                );
-            }
-
+        if (ok == JOptionPane.OK_OPTION){
+            controller.delete(selected.id());
             model.reload(controller.list());
+            // recalculating table width and high again
+            SwingUtilities.invokeLater(() -> table.calculateOptimalDimensions());
         }
     }
 
-    // ==========================================================
-    //                MODAL EDITOR DIALOG
-    // ==========================================================
+    // =========================================================
+    // INNER CLASSES FOR STYLING (Copied locally)
+    // =========================================================
+    
+    /** Rounded button */
+    public static class RoundedButton extends JButton {
 
-    /**
-     * Opens a modal dialog for adding or editing a question.
-     *
-     * @param original existing Question to edit, or null for Add mode.
-     * @return a newly built Question object, or null if user cancelled.
-     */
-    /* Dialog creation + validation logic */
-    private Question showEditorDialog(Question original) {
+        private final Color baseFill  = new Color(20, 24, 32, 235); 
+        private final Color hoverFill = new Color(40, 44, 54, 245);
+        private final Color borderClr = new Color(80, 200, 180); 
+        private final int radius = 65;
 
-        // ---------- Fields (created once) ----------
+        public RoundedButton(String text, int width, int height, int fontSize) {
+            super(text);
 
-        String suggestedId = (original == null)
-                ? String.valueOf(controller.nextId())
-                : original.id();
+            setFont(new Font("Segoe UI", Font.BOLD, fontSize));
+            setForeground(Color.WHITE);
 
-        JTextField tfId = new JTextField(suggestedId, 20);
-        tfId.setEditable(false);
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setOpaque(false);
 
-        JTextField tfText = new JTextField(
-                original == null ? "" : original.text(), 30
-        );
+            setPreferredSize(new Dimension(width, height));
+            setMaximumSize(new Dimension(width, height));
+            setMinimumSize(new Dimension(width, height));
 
-        // Difficulty: placeholder + real values
-        String[] levelItems = {"-- Select level --", "EASY", "MEDIUM", "HARD", "MASTER"};
-        JComboBox<String> cbLevel = new JComboBox<>(levelItems);
-
-        if (original != null) {
-            cbLevel.setSelectedItem(original.level().name());
-        } else {
-            cbLevel.setSelectedIndex(0);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setHorizontalTextPosition(SwingConstants.CENTER);
+            setVerticalTextPosition(SwingConstants.CENTER);
         }
 
-        JTextField tfOpt1 = new JTextField(original == null ? "" : original.options().get(0), 20);
-        JTextField tfOpt2 = new JTextField(original == null ? "" : original.options().get(1), 20);
-        JTextField tfOpt3 = new JTextField(original == null ? "" : original.options().get(2), 20);
-        JTextField tfOpt4 = new JTextField(original == null ? "" : original.options().get(3), 20);
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Correct answer A–D with placeholder
-        String[] correctItems = {"-- Select correct answer --", "A", "B", "C", "D"};
-        JComboBox<String> cbCorrect = new JComboBox<>(correctItems);
+            Color fill = getModel().isRollover() ? hoverFill : baseFill;
+            int w = getWidth();
+            int h = getHeight();
 
-        if (original != null) {
-            cbCorrect.setSelectedIndex(original.correctIndex() + 1); // 0→A, 1→B, ...
-        } else {
-            cbCorrect.setSelectedIndex(0); // placeholder for NEW question
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, w, h, radius, radius);
+
+            g2.setStroke(new BasicStroke(4f));
+            g2.setColor(borderClr); 
+            g2.drawRoundRect(2, 2, w - 4, h - 4, radius, radius);
+
+            g2.dispose();
+            super.paintComponent(g);
         }
-
-        // ---------- Layout panel (also reused) ----------
-        JPanel p = new JPanel(new GridLayout(0, 2, 6, 6));
-        p.add(new JLabel("ID:"));                   p.add(tfId);
-        p.add(new JLabel("Text:"));                 p.add(tfText);
-        p.add(new JLabel("Level:"));                p.add(cbLevel);
-        p.add(new JLabel("Option 1:"));             p.add(tfOpt1);
-        p.add(new JLabel("Option 2:"));             p.add(tfOpt2);
-        p.add(new JLabel("Option 3:"));             p.add(tfOpt3);
-        p.add(new JLabel("Option 4:"));             p.add(tfOpt4);
-        p.add(new JLabel("Correct Answer [A–D]:")); p.add(cbCorrect);
-
-     // ---------- Dialog + validation loop ----------
-        while (true) {
-
-            int res = JOptionPane.showConfirmDialog(
-                    this, p,
-                    (original == null ? "Add Question" : "Edit Question"),
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE
-            );
-
-            if (res != JOptionPane.OK_OPTION) {
-                // user pressed Cancel or closed the dialog
-                return null;
-            }
-
-            // Read current values
-            String id       = tfId.getText().trim();
-            String text     = tfText.getText().trim();
-            String levelStr = (String) cbLevel.getSelectedItem();
-            String correctStr = (String) cbCorrect.getSelectedItem();
-
-            String o1 = tfOpt1.getText().trim();
-            String o2 = tfOpt2.getText().trim();
-            String o3 = tfOpt3.getText().trim();
-            String o4 = tfOpt4.getText().trim();
-
-            // ---- VALIDATION ----
-
-            // 1. All fields filled
-            if (text.isEmpty() || o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "All fields (Text and all 4 options) must be filled.",
-                        "Missing data",
-                        JOptionPane.WARNING_MESSAGE
-                );
-                continue;
-            }
-
-            // 2. All 4 options must be different (case-insensitive)
-            java.util.Set<String> uniq = new java.util.HashSet<>();
-            uniq.add(o1.toLowerCase());
-            uniq.add(o2.toLowerCase());
-            uniq.add(o3.toLowerCase());
-            uniq.add(o4.toLowerCase());
-
-            if (uniq.size() < 4) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "All 4 answer options must be different.\n" +
-                        "Please change the duplicate answers.",
-                        "Duplicate answers",
-                        JOptionPane.WARNING_MESSAGE
-                );
-                continue;
-            }
-
-            // 3. Difficulty chosen
-            if (levelStr == null || levelStr.equals("-- Select level --")) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "You must choose a difficulty level.",
-                        "Missing difficulty level",
-                        JOptionPane.WARNING_MESSAGE
-                );
-                continue;
-            }
-
-            // 4. Correct answer chosen
-            if (correctStr == null || correctStr.equals("-- Select correct answer --")) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "You must choose the correct answer (A–D).",
-                        "Missing correct answer",
-                        JOptionPane.WARNING_MESSAGE
-                );
-                continue;
-            }
-         // ---- All validations passed ----
-
-            int correctIndex = switch (correctStr) {
-                case "A" -> 0;
-                case "B" -> 1;
-                case "C" -> 2;
-                case "D" -> 3;
-                default -> -1; // shouldn't happen
-            };
-
-            java.util.List<String> opts = new ArrayList<>(4);
-            opts.add(o1);
-            opts.add(o2);
-            opts.add(o3);
-            opts.add(o4);
-
-            QuestionLevel lvl = QuestionLevel.valueOf(levelStr);
-
-            return new Question(id, text, opts, correctIndex, lvl);
+    }
+    
+    /** ButtonStyled */
+    public static class ButtonStyled extends RoundedButton {
+        public ButtonStyled(String text) {
+            super(text, 320, 90, 32); 
         }
     }
 
-
+    // =========================================================
+    // TABLE MODEL
+    // =========================================================
     
-    
-    
-    
- // ==================     TABLE MODEL     ===================
-
     /**
-     * Internal table model used only by QuestionManagerView.
-     * Stores a local snapshot of Question list.
+     * Table model that adapts Question objects to a tabular view.
      */
-    /* Full TableModel responsibility */
     private static class QuestionTableModel extends AbstractTableModel {
-
-        /* Column names */
         private final String[] cols = {
-                "ID", "Text", "Level",
-                "Opt1", "Opt2", "Opt3", "Opt4",
-                "Correct"
+                "ID","Text","Level","A (Opt1)","B (Opt2)","C (Opt3)","D (Opt4)","Correct"
         };
 
-        /* Data snapshot shown in the table */
         private List<Question> data = new ArrayList<>();
 
-        /* Constructor loads initial snapshot */
-        QuestionTableModel(List<Question> initial) {
+        QuestionTableModel(List<Question> initial){
             reload(initial);
         }
 
-        /**
-         * Reloads the table data from a "fresh" controller list.
-         */
         public void reload(List<Question> qs){
             data = new ArrayList<>(qs);
-
-            // ----- SORT BY NUMERIC ID ASC -----
             data.sort((a, b) -> {
                 try {
                     int idA = Integer.parseInt(a.id());
                     int idB = Integer.parseInt(b.id());
                     return Integer.compare(idA, idB);
                 } catch (NumberFormatException e) {
-                    // fallback to string compare
                     return a.id().compareTo(b.id());
                 }
             });
-
             fireTableDataChanged();
         }
 
-        /**
-         * Returns the question at a specific row.
-         */
-        public Question getAt(int row) {
-            return data.get(row);
-        }
-
-        @Override
-        public int getRowCount() {
-            return data.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return cols.length;
-        }
-
-        @Override
-        public String getColumnName(int c) {
-            return cols[c];
-        }
-
+        public Question getAt(int row){ return data.get(row); }
+        @Override public int getRowCount(){ return data.size(); }
+        @Override public int getColumnCount(){ return cols.length; }
+        @Override public String getColumnName(int c){ return cols[c]; }
         
         @Override
-        public Object getValueAt(int row, int col) {
+        public Object getValueAt(int row, int col){
             Question q = data.get(row);
-            return switch (col) {
+            return switch(col){
                 case 0 -> q.id();
                 case 1 -> q.text();
                 case 2 -> q.level().name();
@@ -446,16 +367,20 @@ public class QuestionManagerView extends JFrame {
                 case 4 -> q.options().get(1);
                 case 5 -> q.options().get(2);
                 case 6 -> q.options().get(3);
-                case 7 -> String.valueOf((char) ('A' + q.correctIndex())); // 0→A, 1→B...
+                case 7 -> {
+                	// Converts 0 -> A, 1 -> B, 2 -> C, 3 -> D
+                	int correctIdx = q.correctIndex();
+                	yield switch(correctIdx) {
+                    	case 0 -> "A";
+                    	case 1 -> "B";
+                    	case 2 -> "C";
+                    	case 3 -> "D";
+                    	default -> String.valueOf(correctIdx);
+                	};
+                }
                 default -> "";
             };
         }
-
-
-        @Override
-        public boolean isCellEditable(int r, int c) {
-            return false; // table is read-only
-        }
+        @Override public boolean isCellEditable(int r,int c){ return false; }
     }
 }
-
