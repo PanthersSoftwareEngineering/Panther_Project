@@ -2,6 +2,7 @@ package controller;
 
 import javax.swing.SwingUtilities;
 
+import model.DifficultyLevel;
 import model.*;
 import view.StartListener;
 
