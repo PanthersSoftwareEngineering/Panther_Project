@@ -1,6 +1,8 @@
 package view;
 
 import javax.swing.*;
+
+
 import java.awt.*;
 import static view.QuestionManagerView.RoundedButton; // משתמש בכפתורים המקומיים
 
@@ -10,8 +12,10 @@ import static view.QuestionManagerView.RoundedButton; // משתמש בכפתור
  */
 public class StyledConfirmDialog extends JDialog {
 
-    private static final Color DARK_BG = new Color(20, 30, 35, 250); 
-    private static final Color ACCENT_COLOR = new Color(80, 200, 180); 
+    // Deep Navy matching the History card background
+    private static final Color DARK_BG = new Color(15, 18, 40, 250); 
+    // Gold accent matching the "Back to Main" button
+    private static final Color ACCENT_COLOR = new Color(255, 195, 0);
     
     private int result = JOptionPane.CANCEL_OPTION; // Default result
 

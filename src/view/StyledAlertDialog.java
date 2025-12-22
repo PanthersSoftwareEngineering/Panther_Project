@@ -1,6 +1,8 @@
 package view;
 
 import javax.swing.*;
+
+
 import java.awt.*;
 
 // משתמש במחלקת RoundedButton שיצרנו
@@ -12,10 +14,12 @@ import static view.QuestionManagerView.RoundedButton;
  */
 public class StyledAlertDialog extends JDialog {
 
-    private static final Color DARK_BG = new Color(20, 30, 35, 250); 
-    private static final Color ACCENT_COLOR = new Color(80, 200, 180); 
-    private static final Color ERROR_COLOR = new Color(255, 120, 120);
-
+    // Deep Navy matching the History card background
+    private static final Color DARK_BG = new Color(15, 18, 40, 250); 
+    // Gold accent matching the "Back to Main" button
+    private static final Color ACCENT_COLOR = new Color(255, 195, 0); 
+    // Vibrant coral/red for error states
+    private static final Color ERROR_COLOR = new Color(255, 80, 80);
     /**
      * Factory method to show the styled alert dialog.
      * @param owner The parent frame.
