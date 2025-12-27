@@ -2,6 +2,7 @@ package view;
 
 import model.Question;
 import model.QuestionLevel;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -25,8 +26,8 @@ public class QuestionEditorDialog extends JDialog {
     private final JSpinner spCorrect;
 
     // --- Navy/Gold Styling (Matching History/Main Menu) ---
-    private static final Color DARK_BG = new Color(15, 18, 40, 250); 
-    private static final Color GOLD_ACCENT = new Color(255, 190, 60); 
+    private static final Color DARK_BG = new Color(15, 18, 40, 250);
+    private static final Color GOLD_ACCENT = new Color(255, 190, 60);
     private static final Color FIELD_BG = new Color(30, 32, 70);
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private static final Font INPUT_FONT = new Font("Segoe UI", Font.PLAIN, 16);
@@ -40,7 +41,7 @@ public class QuestionEditorDialog extends JDialog {
     private QuestionEditorDialog(JFrame owner, Question original, int maxExistingId) {
         super(owner, original == null ? "Add Question" : "Edit Question", true);
         this.isAddMode = (original == null);
-        
+
         setUndecorated(true);
         setSize(750, 650);
         setLocationRelativeTo(owner);
@@ -92,21 +93,12 @@ public class QuestionEditorDialog extends JDialog {
         styleInput(spCorrect);
 
         // Build UI Rows
-        // Row 0: ID
         addStyledRow(inputGrid, gbc, "ID (Auto):", tfId, 0, 0, 1);
-
-        // Row 1: Question Text (Spans 3 grid columns to reach the end)
         addStyledRow(inputGrid, gbc, "Question Text:", scrollText, 0, 1, 3);
-
-        // Row 2: Level (Left) and Correct (Right)
         addStyledRow(inputGrid, gbc, "Level:", cbLevel, 0, 2, 1);
         addStyledRow(inputGrid, gbc, "Correct (0-3):", spCorrect, 1, 2, 1);
-
-        // Row 3: Option 1 (Left) and Option 2 (Right)
         addStyledRow(inputGrid, gbc, "Option 1 (A):", tfOpt1, 0, 3, 1);
         addStyledRow(inputGrid, gbc, "Option 2 (B):", tfOpt2, 1, 3, 1);
-
-        // Row 4: Option 3 (Left) and Option 4 (Right)
         addStyledRow(inputGrid, gbc, "Option 3 (C):", tfOpt3, 0, 4, 1);
         addStyledRow(inputGrid, gbc, "Option 4 (D):", tfOpt4, 1, 4, 1);
 
@@ -116,7 +108,6 @@ public class QuestionEditorDialog extends JDialog {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 20));
         buttonsPanel.setOpaque(false);
 
-        // IMPORTANT: Accessing static inner class from BaseGameFrame
         BaseGameFrame.RoundedButton btnSave = new BaseGameFrame.RoundedButton("Save", 180, 55, 20);
         BaseGameFrame.RoundedButton btnCancel = new BaseGameFrame.RoundedButton("Cancel", 180, 55, 20);
 
@@ -141,6 +132,7 @@ public class QuestionEditorDialog extends JDialog {
         comp.setFont(INPUT_FONT);
         comp.setForeground(Color.WHITE);
         comp.setBackground(FIELD_BG);
+
         if (comp instanceof JTextField tf) {
             tf.setCaretColor(GOLD_ACCENT);
             tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
@@ -154,41 +146,93 @@ public class QuestionEditorDialog extends JDialog {
         }
     }
 
-    private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component, int gridx, int gridy, int width) {
+    private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component,
+                              int gridx, int gridy, int width) {
         JLabel label = new JLabel(labelText);
         label.setFont(LABEL_FONT);
         label.setForeground(GOLD_ACCENT);
-        
-        // --- Label Configuration ---
+
         gbc.gridx = gridx * 2;
         gbc.gridy = gridy;
-        gbc.gridwidth = 1;      // Reset to 1 for the label
-        gbc.weightx = 0.0;      // Labels don't stretch
+        gbc.gridwidth = 1;
+        gbc.weightx = 0.0;
         gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(8, 10, 8, 5);
         parent.add(label, gbc);
 
-        // --- Component Configuration ---
         gbc.gridx = gridx * 2 + 1;
         gbc.gridy = gridy;
-        gbc.gridwidth = width;  // Set the specific width (1 or 3)
-        gbc.weightx = 1.0;      // Stretch the component
-        gbc.fill = GridBagConstraints.HORIZONTAL; // Fill the area
+        gbc.gridwidth = width;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(8, 0, 8, 15);
         parent.add(component, gbc);
-        
-        // Reset gridwidth to 1 after adding the component for the next call
+
         gbc.gridwidth = 1;
     }
 
+    private static String norm(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    /**
+     * Show validation error in the same theme (visible on top of this dialog).
+     */
+    private void showValidationError(String msg) {
+        JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
+        StyledAlertDialog.show(owner, "Input Error", msg, true);
+    }
+
     private void onSave() {
-        // Collect data and set result Question object...
-        this.result = new Question(tfId.getText(), taText.getText(), 
-                      List.of(tfOpt1.getText(), tfOpt2.getText(), tfOpt3.getText(), tfOpt4.getText()), 
-                      (Integer)spCorrect.getValue(), 
-                      QuestionLevel.valueOf(cbLevel.getSelectedItem().toString()));
+        String id = tfId.getText();
+        String text = norm(taText.getText());
+
+        String o1 = norm(tfOpt1.getText());
+        String o2 = norm(tfOpt2.getText());
+        String o3 = norm(tfOpt3.getText());
+        String o4 = norm(tfOpt4.getText());
+
+        // --- Validation rules ---
+        if (text.isEmpty()) {
+            showValidationError("Question text cannot be empty.");
+            taText.requestFocusInWindow();
+            return;
+        }
+
+        if (o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
+            showValidationError("All 4 options must be filled (A, B, C, D).");
+
+            if (o1.isEmpty()) tfOpt1.requestFocusInWindow();
+            else if (o2.isEmpty()) tfOpt2.requestFocusInWindow();
+            else if (o3.isEmpty()) tfOpt3.requestFocusInWindow();
+            else tfOpt4.requestFocusInWindow();
+
+            return;
+        }
+
+        var opts = List.of(o1, o2, o3, o4);
+        long distinctCount = opts.stream().map(String::toLowerCase).distinct().count();
+        if (distinctCount < 4) {
+            showValidationError("Options must be different from each other.");
+            return;
+        }
+
+        int correct = (Integer) spCorrect.getValue();
+        if (correct < 0 || correct > 3) {
+            showValidationError("Correct index must be between 0 and 3.");
+            return;
+        }
+
+        // If all ok -> build object
+        this.result = new Question(
+                id,
+                text,
+                opts,
+                correct,
+                QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
+        );
         dispose();
     }
 }

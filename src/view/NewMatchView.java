@@ -1,8 +1,6 @@
 package view;
 
 import controller.AppController;
-import model.DifficultyLevel;
-import model.SysData;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -204,6 +202,7 @@ public class NewMatchView extends BaseGameFrame {
 
         center.add(bottomButtons);
         center.add(Box.createVerticalStrut(50));
+
         // add center into main, and main as CENTER of bgPanel
         mainPanel.add(center);
         mainPanel.add(Box.createVerticalGlue());
@@ -345,14 +344,36 @@ public class NewMatchView extends BaseGameFrame {
 
     private void wireActions(ButtonStyled startBtn, ButtonStyled backBtn) {
         startBtn.addActionListener(e -> {
-            String name1 = p1.getText() != null ? p1.getText().trim() : "";
-            String name2 = p2.getText() != null ? p2.getText().trim() : "";
+            String name1 = normName(p1.getText());
+            String name2 = normName(p2.getText());
 
             boolean p1Empty = name1.isEmpty();
             boolean p2Empty = name2.isEmpty();
 
             if (p1Empty || p2Empty) {
-                showPlayerNameError(p1Empty, p2Empty);
+                StyledAlertDialog.show(
+                        this,
+                        "Player Names Required",
+                        p1Empty && p2Empty ? "Both player names are empty.\nPlease fill in both names."
+                                : (p1Empty ? "Player 1 name is empty.\nPlease fill in Player 1 name."
+                                : "Player 2 name is empty.\nPlease fill in Player 2 name."),
+                        true
+                );
+                if (p1Empty) p1.requestFocusInWindow();
+                else p2.requestFocusInWindow();
+                return;
+            }
+
+            // NEW RULE: names cannot be the same (case-insensitive)
+            if (name1.equalsIgnoreCase(name2)) {
+                StyledAlertDialog.show(
+                        this,
+                        "Invalid Names",
+                        "Player 1 and Player 2 names cannot be the same.\nPlease enter two different names.",
+                        true
+                );
+                p2.requestFocusInWindow();
+                p2.selectAll();
                 return;
             }
 
@@ -361,11 +382,11 @@ public class NewMatchView extends BaseGameFrame {
                 dispose();
             } catch (Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(
+                StyledAlertDialog.show(
                         this,
-                        "An error occurred while starting the game:\n" + ex.getMessage(),
                         "Error",
-                        JOptionPane.ERROR_MESSAGE
+                        "An error occurred while starting the game:\n" + ex.getMessage(),
+                        true
                 );
             }
         });
@@ -374,120 +395,23 @@ public class NewMatchView extends BaseGameFrame {
             try {
                 dispose();
                 app.showMainMenu();
-
             } catch (Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(
+                StyledAlertDialog.show(
                         this,
-                        "An error occurred while returning to the main menu:\n" + ex.getMessage(),
                         "Error",
-                        JOptionPane.ERROR_MESSAGE
+                        "An error occurred while returning to the main menu:\n" + ex.getMessage(),
+                        true
                 );
             }
         });
     }
 
-    // ===================== styled popup for missing names =====================
-
-    private void showPlayerNameError(boolean p1Empty, boolean p2Empty) {
-        String details;
-        if (p1Empty && p2Empty) {
-            details = "Both player names are empty.";
-        } else if (p1Empty) {
-            details = "Player 1 name is empty.";
-        } else {
-            details = "Player 2 name is empty.";
-        }
-
-        JDialog dialog = new JDialog(this, "Player Names Required", true);
-        dialog.setSize(480, 260);
-        dialog.setLocationRelativeTo(this);
-        dialog.setUndecorated(true);
-
-        JPanel panel = new JPanel();
-        panel.setBackground(new Color(20, 24, 32));
-        panel.setBorder(BorderFactory.createLineBorder(new Color(255, 190, 60), 4, true));
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        dialog.setContentPane(panel);
-
-        JLabel title = new JLabel("Missing Player Name");
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        title.setForeground(Color.WHITE);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        panel.add(Box.createVerticalStrut(20));
-        panel.add(title);
-
-        JLabel msg = new JLabel("Please fill in both player names before starting a match.");
-        msg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        msg.setForeground(new Color(220, 220, 220));
-        msg.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        panel.add(Box.createVerticalStrut(10));
-        panel.add(msg);
-
-        JLabel det = new JLabel(details);
-        det.setAlignmentX(Component.CENTER_ALIGNMENT);
-        det.setForeground(new Color(200, 160, 160));
-        det.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        panel.add(Box.createVerticalStrut(8));
-        panel.add(det);
-
-        panel.add(Box.createVerticalStrut(30));
-
-        JButton ok = new JButton("OK");
-        stylePopupButton(ok);
-        ok.setAlignmentX(Component.CENTER_ALIGNMENT);
-        ok.addActionListener(e -> dialog.dispose());
-        panel.add(ok);
-        panel.add(Box.createVerticalStrut(25));
-
-        dialog.setVisible(true);
-    }
-
-    private void stylePopupButton(JButton btn) {
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setOpaque(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setForeground(Color.WHITE);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 22));
-
-        btn.setPreferredSize(new Dimension(140, 55));
-        btn.setMaximumSize(new Dimension(140, 55));
-        btn.setMinimumSize(new Dimension(140, 55));
-
-        btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btn.repaint(); }
-            @Override public void mouseExited(MouseEvent e)  { btn.repaint(); }
-        });
-
-        btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
-            @Override
-            public void paint(Graphics g, JComponent c) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                Color fill = btn.getModel().isRollover()
-                        ? new Color(40, 44, 54)
-                        : new Color(20, 24, 32);
-
-                int arc = 40;
-                int w = btn.getWidth();
-                int h = btn.getHeight();
-
-                g2.setColor(fill);
-                g2.fillRoundRect(0, 0, w, h, arc, arc);
-                g2.setColor(new Color(255, 190, 60));
-                g2.setStroke(new BasicStroke(3f));
-                g2.drawRoundRect(2, 2, w - 4, h - 4, arc, arc);
-
-                g2.dispose();
-                super.paint(g, c);
-            }
-        });
-    }
-
     // ===================== small helpers =====================
+
+    private static String normName(String s) {
+        return s == null ? "" : s.trim().replaceAll("\\s+", " ");
+    }
 
     private void styleTextField(JTextField f) {
         f.setFont(new Font("Segoe UI", Font.PLAIN, 24));
