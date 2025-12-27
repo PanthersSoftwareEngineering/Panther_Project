@@ -5,94 +5,152 @@ import java.awt.*;
 import static view.QuestionManagerView.RoundedButton;
 
 /**
- * AbstractStyledDialog (Template Method Pattern)
- * ---------------------------------------------
- * This class defines the FIXED algorithm for building all styled dialogs.
+ * AbstractStyledDialog
+ * ====================
+ * Template Method base class for all game-styled dialogs.
  *
- * Template method (fixed):
- * 1) Setup dialog window
- * 2) Build root panel (background + border)
- * 3) Add message section  (HOOK)
- * 4) Add buttons section  (HOOK)
- * 5) Show dialog and return result
- *
- * Hook methods (subclasses override):
- * - createMessagePanel()
- * - createButtonsPanel()
+ * What this class guarantees:
+ * - Consistent size, border, background and spacing
+ * - Centered title + centered message layout
+ * - Optional second (smaller) message line
+ * - Buttons row placed at the bottom, centered
  */
 public abstract class AbstractStyledDialog extends JDialog {
 
     protected int result = JOptionPane.CANCEL_OPTION;
 
     protected AbstractStyledDialog(JFrame owner, String title) {
-        super(owner, title, true);
-        buildDialog(); // TEMPLATE METHOD
+        super(owner, title, true); 
+    
     }
 
-    // =========================================================
-    // TEMPLATE METHOD
-    // =========================================================
-    private final void buildDialog() {
+    /**
+     * Builds the dialog UI. Call once at the END of subclass constructor,
+     * after all fields are initialized.
+     */
+    protected final void initDialog() {
+        buildDialog();
+    }
 
-        // 1) Window setup
+    // ---------
+    // ---------------------------------------------------------
+    private void buildDialog() {
+        setUndecorated(true);
         setSize(dialogSize());
         setLocationRelativeTo(getOwner());
-        setUndecorated(true);
-        getRootPane().setBorder(
-                BorderFactory.createLineBorder(accentColor(), borderThickness(), true)
-        );
+        getRootPane().setBorder(BorderFactory.createLineBorder(accentColor(), 4, true));
 
-        // 2) Root panel
-        JPanel root = new JPanel(new BorderLayout(15, 15));
+        JPanel root = new JPanel(new BorderLayout());
         root.setBackground(backgroundColor());
-        root.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        root.setBorder(BorderFactory.createEmptyBorder(22, 28, 18, 28));
+        setContentPane(root);
 
-        // 3) Message section (HOOK)
-        root.add(createMessagePanel(), BorderLayout.CENTER);
-
-        // 4) Buttons section (HOOK)
+        root.add(buildContent(), BorderLayout.CENTER);
         root.add(createButtonsPanel(), BorderLayout.SOUTH);
 
-        setContentPane(root);
+        revalidate();
+        repaint();
     }
 
-    // =========================================================
-    // HOOK METHODS (subclasses must implement)
-    // =========================================================
-    protected abstract JPanel createMessagePanel();
+    private JPanel buildContent() {
+        JPanel_toggleNoScroll();
+
+        JPanel col = new JPanel();
+        col.setOpaque(false);
+
+        // Title (centered)
+        JLabel title = new JLabel(titleText(), SwingConstants.CENTER);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setForeground(titleColor());
+        title.setFont(new Font("Segoe UI", Font.BOLD, titleFontSize()));
+        col.add(title);
+
+        col.add(Box.createVerticalStrut(14));
+
+        // Main message 
+        JLabel primary = wrappedLabel(primaryMessage(), primaryFontSize(), primaryColor());
+        col.add(primary);
+
+        // Optional detail line
+        String detail = secondaryMessage();
+        if (detail != null && !detail.isBlank()) {
+            col.add(Box.createVerticalStrut(10));
+            JLabel secondary = wrappedLabel(detail, secondaryFontSize(), secondaryColor());
+            col.add(secondary);
+        }
+
+        col.add(Box.createVerticalStrut(12));
+        return col;
+    }
+
+    /**
+     * Creates a centered, wrapped text block 
+     */
+    private JLabel wrappedLabel(String text, int fontSize, Color color) {
+        if (text == null) text = "";
+
+        String safe = escapeHtml(text);
+        int w = messageBlockWidth();
+
+        JLabel lbl = new JLabel(
+                "<html><div style='width:" + w + "px; text-align:center;'>" + safe + "</div></html>",
+                SwingConstants.CENTER
+        );
+        lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
+        lbl.setForeground(color);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, fontSize));
+        return lbl;
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        String out = s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+
+        // Make newlines visible inside HTML labels
+        out = out.replace("\r\n", "\n").replace("\r", "\n");
+        out = out.replace("\n", "<br>");
+        return out;
+    }
+
+    // ---------------------------------------------------------
+    // Hooks for subclasses
+    // ---------------------------------------------------------
+    protected String titleText() { return getTitle(); }
+    protected abstract String primaryMessage();
+    protected String secondaryMessage() { return null; }
     protected abstract JPanel createButtonsPanel();
 
-    // =========================================================
-    // Style hooks (defaults) - subclasses may override if needed
-    // =========================================================
-    protected Dimension dialogSize() {
-        return new Dimension(500, 250);
-    }
+    // ---------------------------------------------------------
+    // Styling defaults
+    // ---------------------------------------------------------
+    protected Dimension dialogSize() { return new Dimension(620, 280); }
+    protected int messageBlockWidth() { return 520; }
 
-    protected Color backgroundColor() {
-        return new Color(15, 18, 40, 250); // deep navy
-    }
+    protected Color backgroundColor() { return new Color(15, 18, 40, 250); }
+    protected Color accentColor() { return new Color(255, 195, 0); }
 
-    protected Color accentColor() {
-        return new Color(255, 195, 0); // gold accent
-    }
+    protected Color titleColor() { return accentColor(); }
+    protected Color primaryColor() { return Color.WHITE; }
+    protected Color secondaryColor() { return new Color(210, 210, 210, 210); }
 
-    protected int borderThickness() {
-        return 4;
-    }
+    protected int titleFontSize() { return 30; }
+    protected int primaryFontSize() { return 18; }
+    protected int secondaryFontSize() { return 14; }
 
-    // =========================================================
-    // Utility: create a RoundedButton with consistent sizing
-    // =========================================================
     protected RoundedButton createButton(String text, int w, int h, int fontSize) {
         return new RoundedButton(text, w, h, fontSize);
     }
 
-    /**
-     * Show dialog (modal) and return the result code (JOptionPane.* constants).
-     */
     public final int showDialog() {
         setVisible(true);
         return result;
+    }
+
+    // no-op helper (keeps intent explicit)
+    private void JPanel_toggleNoScroll() {
+        // dialogs are intentionally short; do not add scroll panes here
     }
 }
