@@ -2,6 +2,8 @@ package view;
 
 import controller.AppController;
 import controller.MatchController;
+import model.MatchListener;
+import model.MatchSnapshot;
 import model.SysData;
 
 import javax.swing.*;
@@ -11,15 +13,9 @@ import java.awt.event.MouseEvent;
 
 /**
  * Game screen with two boards (P1 left, P2 right) + HUD.
- *
- * Uses the "good boards" rendering:
- *  - CellButton + CellStyle.colorForSymbol(sym, playerIdx)
- *  - Correct symbol display, correct base colors, correct text colors
- *
- * Requires (as you already have):
- *  - GameAssets, BackgroundPanel, UIStyles, CellButton, CellStyle, Toast, QuestionDialog
+ * Observer-based: Match notifies this view with MatchSnapshot.
  */
-public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
+public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, MatchListener {
 
     private final MatchController ctrl;
     private final AppController app;
@@ -45,6 +41,9 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
     private Timer timer;
     private boolean endSequenceStarted = false;
 
+    // latest snapshot (for timer refresh)
+    private volatile MatchSnapshot lastSnapshot = null;
+
     public GameViewTwoBoards(MatchController ctrl, AppController app) {
         super(app, "Minesweeper - Match");
         this.ctrl = ctrl;
@@ -52,24 +51,24 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
 
         ctrl.setQuestionUI(this);
 
+        // ✅ Register as observer
+        ctrl.addMatchListener(this);
+
         // ============================================================
-        // Background (donor style)
+        // Background
         // ============================================================
         BackgroundPanel bg = new BackgroundPanel(GameAssets.MATCH_BACKGROUND);
         bg.setLayout(new BorderLayout(8, 8));
         setContentPane(bg);
 
-        // (אם BaseGameFrame שלך כולל שכבת Toast) – להשאיר
-        // אם אין לך פונקציה כזו ב-BaseGameFrame, פשוט תמחק את השורה הזו.
         installToastLayer();
 
         // ============================================================
-        // HUD: Row 1 (BIG Difficulty) + Row 2 (Stats)
+        // HUD
         // ============================================================
         JPanel hud = UIStyles.translucentPanel(new BorderLayout(), UIStyles.HUD_PANEL_BG);
         hud.setBorder(UIStyles.pad(12, 16, 12, 16));
 
-        // ---- Row 1: Difficulty (BIG) ----
         UIStyles.styleTitle(lblDifficulty);
         lblDifficulty.setHorizontalAlignment(SwingConstants.LEFT);
         lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
@@ -78,7 +77,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
         row1.setOpaque(false);
         row1.add(lblDifficulty, BorderLayout.WEST);
 
-        // ---- Row 2: Lives / Points / Time / Active / Back ----
         UIStyles.styleHudLabel(lblLives);
         UIStyles.styleHudLabel(lblPoints);
         UIStyles.styleHudLabel(lblTimer);
@@ -89,10 +87,13 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
 
         back.addActionListener(e -> {
             if (timer != null) timer.stop();
+
+            // ✅ unregister listener to avoid leaks
+            ctrl.removeMatchListener(this);
+
             dispose();
             if (app != null) app.showMainMenu();
         });
-
 
         JPanel row2 = new JPanel(new GridLayout(1, 5, 14, 0));
         row2.setOpaque(false);
@@ -118,9 +119,8 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
 
         bg.add(topWrap, BorderLayout.NORTH);
 
-
         // ============================================================
-        // Board containers (Name + ACTIVE chip)  [הגרסה הטובה שלך]
+        // Boards headers + ACTIVE chip
         // ============================================================
         lblP1.setHorizontalAlignment(SwingConstants.CENTER);
         lblP2.setHorizontalAlignment(SwingConstants.CENTER);
@@ -132,7 +132,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
         left.setOpaque(false);
         right.setOpaque(false);
 
-        // chips config
         chipP1Active.setOpaque(true);
         chipP1Active.setForeground(UIStyles.CHIP_TEXT);
         chipP1Active.setFont(UIStyles.HUD_FONT_SMALL);
@@ -172,20 +171,25 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
 
         bg.add(both, BorderLayout.CENTER);
 
-
         // ============================================================
-        // Build + refresh
+        // Build buttons once
         // ============================================================
         buildBoards();
-        refreshAll();
 
+        // ============================================================
+        // Timer: updates only the clock label
+        // ============================================================
         timer = new Timer(1000, e -> {
-            lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
+            MatchSnapshot s = lastSnapshot;
+            long sec = (s != null) ? s.elapsedSeconds() : ctrl.getElapsedSeconds();
+            lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(sec));
+
+            // not necessary, but keeps it synced
             lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
         });
         timer.start();
 
-        // full screen
+        // Full screen
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen.width, screen.height);
         setLocationRelativeTo(null);
@@ -194,7 +198,20 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
     }
 
     // ============================================================
-    // BUILD BOARDS (CellButton + proper style)
+    // OBSERVER CALLBACK
+    // ============================================================
+    @Override
+    public void onMatchChanged(MatchSnapshot s) {
+        this.lastSnapshot = s;
+
+        SwingUtilities.invokeLater(() -> {
+            refreshFromSnapshot(s);
+            endCheck(s);
+        });
+    }
+
+    // ============================================================
+    // BUILD BOARDS (listeners only call controller actions)
     // ============================================================
     private void buildBoards() {
         int R = ctrl.rows(), C = ctrl.cols();
@@ -242,8 +259,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
                             }
                         }
 
-                        refreshAll();
-                        endCheck();
+                        // ✅ no manual refresh – snapshot will arrive
                     }
                 });
 
@@ -271,8 +287,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
                             }
                         }
 
-                        refreshAll();
-                        endCheck();
+                        // ✅ no manual refresh – snapshot will arrive
                     }
                 });
 
@@ -290,21 +305,21 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
     }
 
     // ============================================================
-    // REFRESH ALL (symbols + correct colors)
+    // REFRESH UI FROM SNAPSHOT
     // ============================================================
-    private void refreshAll() {
-        boolean p1Active = ctrl.isPlayer1Active();
+    private void refreshFromSnapshot(MatchSnapshot s) {
+        boolean p1Active = (s.activeIndex() == 0);
 
-        // names
-        lblP1.setText(ctrl.getP1());
-        lblP2.setText(ctrl.getP2());
+        // Names
+        lblP1.setText(s.p1());
+        lblP2.setText(s.p2());
 
         // HUD
-        lblLives.setText("Lives: " + ctrl.getLives());
-        lblPoints.setText("Points: " + ctrl.getPoints());
-        lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
-        lblActive.setText("Active: " + (p1Active ? ctrl.getP1() : ctrl.getP2()));
-        lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
+        lblLives.setText("Lives: " + s.lives());
+        lblPoints.setText("Points: " + s.points());
+        lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(s.elapsedSeconds()));
+        lblActive.setText("Active: " + (p1Active ? s.p1() : s.p2()));
+        lblDifficulty.setText("Difficulty: " + s.level().name());
 
         // ACTIVE chips
         chipP1Active.setVisible(p1Active);
@@ -312,8 +327,8 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
         chipP1Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P1);
         chipP2Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P2);
 
-        String[][] g1 = ctrl.symbolsOfBoard(0);
-        String[][] g2 = ctrl.symbolsOfBoard(1);
+        String[][] g1 = s.boardP1();
+        String[][] g2 = s.boardP2();
 
         // Board 1
         for (int r = 0; r < g1.length; r++) {
@@ -359,24 +374,24 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
     private static void setPanelEnabled(Container p, boolean enabled) {
         for (Component c : p.getComponents()) {
             c.setEnabled(enabled);
-            if (c instanceof Container cc)
-                setPanelEnabled(cc, enabled);
+            if (c instanceof Container cc) setPanelEnabled(cc, enabled);
         }
     }
 
     // ============================================================
-    // END CHECK (show end screen after 10 sec)
+    // END CHECK (stay 10 seconds then open EndView)
     // ============================================================
-    private void endCheck() {
-        if (!ctrl.isFinished()) return;
+    private void endCheck(MatchSnapshot s) {
+        if (!s.finished()) return;
         if (endSequenceStarted) return;
         endSequenceStarted = true;
 
         if (timer != null) timer.stop();
-        refreshAll();
 
         Timer delay = new Timer(10_000, e -> {
+            ctrl.removeMatchListener(this);
             dispose();
+
             SysData.GameRecord rec = ctrl.getLastRecord();
             if (app != null && rec != null) {
                 app.openEndScreen(rec);
@@ -387,7 +402,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI {
     }
 
     // ============================================================
-    // QUESTION UI (gold dialog)
+    // QUESTION UI
     // ============================================================
     @Override
     public int ask(QuestionDTO q) {
