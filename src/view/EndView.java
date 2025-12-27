@@ -7,19 +7,30 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * End-of-game screen.
+ * End-of-game screen (Win/Lose).
+ * Cleaned + consistent sizing for all value fields.
  */
 public class EndView extends BaseGameFrame {
 
+    // ---------- tuning constants ----------
+    private static final Color GOLD      = new Color(255, 190, 60);
+    private static final Color DARK_FILL = new Color(15, 17, 26);
+
+    private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 90);
+    private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 34);
+    private static final Font VALUE_FONT = new Font("Segoe UI", Font.PLAIN, 30);
+
+    private static final Dimension WHITE_VALUE_SIZE = new Dimension(520, 60);
+    private static final Dimension DARK_VALUE_SIZE  = new Dimension(350, 60);
+
     public EndView(AppController app, SysData.GameRecord rec) {
         super(app, "Game Over");
+        if (app == null) throw new IllegalArgumentException("AppController must not be null");
 
-        if (app == null) {
-            throw new IllegalArgumentException("AppController must not be null");
-        }
+        boolean won = rec != null && rec.won;
 
-        // ===== choose background image (end screen first, then main as fallback) =====
-        Image bgImage = GameAssets.END_BACKGROUND != null
+        // ===== background =====
+        Image bgImage = (GameAssets.END_BACKGROUND != null)
                 ? GameAssets.END_BACKGROUND
                 : GameAssets.MAIN_BACKGROUND;
 
@@ -27,124 +38,78 @@ public class EndView extends BaseGameFrame {
         bgPanel.setLayout(new BorderLayout());
         setContentPane(bgPanel);
 
-        boolean won = rec != null && rec.won;
+        // ===== TOP (title) =====
+        bgPanel.add(buildTop(won), BorderLayout.NORTH);
 
-        // =================================================================================
-        // TOP: TITLE
-        // =================================================================================
-        JPanel topPanel = new JPanel();
-        topPanel.setOpaque(false);
-        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
-        topPanel.add(Box.createVerticalStrut(40));   // distance from top edge
+        // ===== CENTER (stats + gif) =====
+        bgPanel.add(buildCenter(rec, won), BorderLayout.CENTER);
 
-        JLabel titleLabel = new JLabel(won ? "YOU WON !" : "YOU LOST...");
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLabel.setForeground(new Color(255, 204, 0));
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 90));
+        // ===== BOTTOM (button) =====
+        bgPanel.add(buildBottom(app), BorderLayout.SOUTH);
 
-        topPanel.add(titleLabel);
-        topPanel.add(Box.createVerticalStrut(10));
+        // ===== frame basics =====
+        pack();
+        setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setVisible(true);
+    }
 
-        bgPanel.add(topPanel, BorderLayout.NORTH);
+    // =====================================================================================
+    // PANELS
+    // =====================================================================================
 
-        // =================================================================================
-        // CENTER: STATS + GIF
-        // =================================================================================
-        JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setOpaque(false);
-        centerPanel.setBorder(BorderFactory.createEmptyBorder(40, 80, 150, 80));
-        bgPanel.add(centerPanel, BorderLayout.CENTER);
+    private JComponent buildTop(boolean won) {
+        JPanel top = new JPanel();
+        top.setOpaque(false);
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.add(Box.createVerticalStrut(40));
 
-        // values from GameRecord (safe defaults)
-        String p1     = rec == null ? "-" : safe(rec.p1);
-        String p2     = rec == null ? "-" : safe(rec.p2);
-        String lvl    = rec == null ? "-" : safe(rec.level);
-        String hearts = rec == null ? "-" : String.valueOf(rec.hearts);
-        String score  = rec == null ? "-" : String.valueOf(rec.points);
+        JLabel title = new JLabel(won ? "YOU WON !" : "YOU LOST...");
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setForeground(new Color(255, 204, 0));
+        title.setFont(TITLE_FONT);
 
-        // ---- shared row spacing ----
-        Insets leftColInsets  = new Insets(22, 0, 22, 40);
-        Insets rightColInsets = new Insets(22, 10, 22, 0);
+        top.add(title);
+        top.add(Box.createVerticalStrut(10));
+        return top;
+    }
+
+    private JComponent buildCenter(SysData.GameRecord rec, boolean won) {
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
+        center.setBorder(BorderFactory.createEmptyBorder(40, 80, 150, 80));
+
+        // safe values
+        String p1     = safe(rec == null ? null : rec.p1);
+        String p2     = safe(rec == null ? null : rec.p2);
+        String lvl    = safe(rec == null ? null : rec.level);
+        String hearts = (rec == null) ? "-" : String.valueOf(rec.hearts);
+        String score  = (rec == null) ? "-" : String.valueOf(rec.points);
 
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridy = 0;
 
-        // ---------------- Row 0: Player 1 ----------------
-        // left column: label
-        gc.gridx = 0;
-        gc.insets = leftColInsets;
-        gc.anchor = GridBagConstraints.EAST;
-        gc.fill = GridBagConstraints.NONE;
-        gc.weightx = 0;
-        centerPanel.add(createFieldTitle("Player 1 Name"), gc);
+        Insets leftInsets  = new Insets(22, 0, 22, 40);
+        Insets rightInsets = new Insets(22, 10, 22, 0);
 
-        // right column: value
-        gc.gridx = 1;
-        gc.insets = rightColInsets;
-        gc.anchor = GridBagConstraints.WEST;
-        centerPanel.add(createWhiteValueField(p1), gc);
+        // Row 0
+        addRow(center, gc, 0, "Player 1 Name", createWhiteValue(p1), leftInsets, rightInsets);
+        // Row 1
+        addRow(center, gc, 1, "Player 2 Name", createWhiteValue(p2), leftInsets, rightInsets);
+        // Row 2
+        addRow(center, gc, 2, "Difficulty Level", createDarkValue(lvl), leftInsets, rightInsets);
+        // Row 3
+        addRow(center, gc, 3, "Hearts Left", createDarkValue(hearts), leftInsets, rightInsets);
+        // Row 4
+        addRow(center, gc, 4, "Score", createDarkValue(score), leftInsets, rightInsets);
 
-        // ---------------- Row 1: Player 2 ----------------
-        gc.gridy = 1;
-
-        gc.gridx = 0;
-        gc.insets = leftColInsets;
-        gc.anchor = GridBagConstraints.EAST;
-        centerPanel.add(createFieldTitle("Player 2 Name"), gc);
-
-        gc.gridx = 1;
-        gc.insets = rightColInsets;
-        gc.anchor = GridBagConstraints.WEST;
-        centerPanel.add(createWhiteValueField(p2), gc);
-
-        // ---------------- Row 2: Difficulty ----------------
-        gc.gridy = 2;
-
-        gc.gridx = 0;
-        gc.insets = leftColInsets;
-        gc.anchor = GridBagConstraints.EAST;
-        centerPanel.add(createFieldTitle("Difficulty Level"), gc);
-
-        gc.gridx = 1;
-        gc.insets = rightColInsets;
-        gc.anchor = GridBagConstraints.WEST;
-        centerPanel.add(createDarkPillValue(lvl), gc);
-
-        // ---------------- Row 3: Hearts left ----------------
-        gc.gridy = 3;
-
-        gc.gridx = 0;
-        gc.insets = leftColInsets;
-        gc.anchor = GridBagConstraints.EAST;
-        centerPanel.add(createFieldTitle("Hearts Left"), gc);
-
-        gc.gridx = 1;
-        gc.insets = rightColInsets;
-        gc.anchor = GridBagConstraints.WEST;
-        centerPanel.add(createDarkPillValue(hearts), gc);
-
-        // ---------------- Row 4: Score ----------------
-        gc.gridy = 4;
-
-        gc.gridx = 0;
-        gc.insets = leftColInsets;
-        gc.anchor = GridBagConstraints.EAST;
-        centerPanel.add(createFieldTitle("Score"), gc);
-
-        gc.gridx = 1;
-        gc.insets = rightColInsets;
-        gc.anchor = GridBagConstraints.WEST;
-        centerPanel.add(createDarkPillValue(score), gc);
-
-        // ---------------- GIF  ----------------
+        // GIF
         JLabel gifLabel = new JLabel();
         gifLabel.setHorizontalAlignment(SwingConstants.CENTER);
         gifLabel.setVerticalAlignment(SwingConstants.CENTER);
 
         ImageIcon gifIcon = pickRandomGif(won ? GameAssets.WIN_GIFS : GameAssets.LOSE_GIFS);
-        if (gifIcon != null) {
-            gifLabel.setIcon(gifIcon);
-        }
+        if (gifIcon != null) gifLabel.setIcon(gifIcon);
 
         GridBagConstraints gcGif = new GridBagConstraints();
         gcGif.gridx = 2;
@@ -152,23 +117,21 @@ public class EndView extends BaseGameFrame {
         gcGif.gridheight = 5;
         gcGif.insets = new Insets(10, 60, 275, 0);
         gcGif.anchor = GridBagConstraints.CENTER;
-        gcGif.fill = GridBagConstraints.NONE;
-        gcGif.weightx = 0;
-        centerPanel.add(gifLabel, gcGif);
+        center.add(gifLabel, gcGif);
 
-        // =================================================================================
-        // BOTTOM: MAIN MENU BUTTON
-        // =================================================================================
+        return center;
+    }
+
+    private JComponent buildBottom(AppController app) {
         JPanel bottom = new JPanel();
         bottom.setOpaque(false);
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.X_AXIS));
         bottom.setBorder(BorderFactory.createEmptyBorder(20, 0, 80, 170));
 
         bottom.add(Box.createHorizontalGlue());
+
         ButtonStyled mainMenuBtn = new ButtonStyled("Main Menu");
         bottom.add(mainMenuBtn);
-
-        bgPanel.add(bottom, BorderLayout.SOUTH);
 
         mainMenuBtn.addActionListener(e -> {
             try {
@@ -186,76 +149,94 @@ public class EndView extends BaseGameFrame {
             }
         });
 
-        // =================================================================================
-        // FRAME BASICS
-        // =================================================================================
-        pack();
-        setLocationRelativeTo(null);
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // start maximized like other views
-        setVisible(true);
+        return bottom;
     }
 
     // =====================================================================================
-    // UI HELPERS
+    // ROW HELPERS
     // =====================================================================================
 
-    /** Title for each field on the left ("Player 1 Name", "Difficulty Level", etc.). */
-    private JLabel createFieldTitle(String text) {
+    private void addRow(JPanel parent,
+                        GridBagConstraints gc,
+                        int row,
+                        String leftText,
+                        JComponent rightValue,
+                        Insets leftInsets,
+                        Insets rightInsets) {
+
+        // left label
+        gc.gridy = row;
+        gc.gridx = 0;
+        gc.insets = leftInsets;
+        gc.anchor = GridBagConstraints.EAST;
+        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 0;
+        parent.add(createLeftLabel(leftText), gc);
+
+        // right value
+        gc.gridx = 1;
+        gc.insets = rightInsets;
+        gc.anchor = GridBagConstraints.WEST;
+        parent.add(rightValue, gc);
+    }
+
+    private JLabel createLeftLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setForeground(Color.WHITE);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 34));
+        lbl.setFont(LABEL_FONT);
         return lbl;
     }
 
-    /** White rounded field used for player names. */
-    private JComponent createWhiteValueField(String text) {
+    /**
+     * White rounded field for player names.
+     * IMPORTANT: fixed height/width so it matches other rows consistently.
+     */
+    private JComponent createWhiteValue(String text) {
         JLabel lbl = new JLabel(text, SwingConstants.CENTER);
         lbl.setForeground(Color.BLACK);
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+        lbl.setFont(VALUE_FONT);
         lbl.setOpaque(true);
         lbl.setBackground(Color.WHITE);
 
-        // Small rounded border (radius 10)
         lbl.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(new Color(200, 200, 200), 3, 10),
                 BorderFactory.createEmptyBorder(10, 40, 10, 40)
         ));
 
-        Dimension d = new Dimension(520, 60);
-        lbl.setPreferredSize(d);
-        lbl.setMinimumSize(d);
-        lbl.setMaximumSize(d);
+        setFixedSize(lbl, WHITE_VALUE_SIZE);
         return lbl;
     }
 
-    /** Dark pill with golden border used for difficulty / hearts / score. */
-    private JComponent createDarkPillValue(String text) {
-        Color gold = new Color(255, 190, 60);
-
+    /**
+     * Dark pill with gold border for difficulty/hearts/score.
+     */
+    private JComponent createDarkValue(String text) {
         JLabel lbl = new JLabel(text, SwingConstants.CENTER);
         lbl.setForeground(Color.WHITE);
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+        lbl.setFont(VALUE_FONT);
         lbl.setOpaque(true);
-        lbl.setBackground(new Color(15, 17, 26));
+        lbl.setBackground(DARK_FILL);
 
         lbl.setBorder(BorderFactory.createCompoundBorder(
-                new RoundedBorder(gold, 4, 10),
+                new RoundedBorder(GOLD, 4, 10),
                 BorderFactory.createEmptyBorder(10, 80, 10, 80)
         ));
 
-        Dimension d = new Dimension(350, 60);
-        lbl.setPreferredSize(d);
-        lbl.setMinimumSize(d);
-        lbl.setMaximumSize(d);
+        setFixedSize(lbl, DARK_VALUE_SIZE);
         return lbl;
     }
 
-    /** Returns "-" instead of null when showing text values. */
-    private String safe(Object o) {
-        return (o == null) ? "-" : o.toString();
+    private void setFixedSize(JComponent c, Dimension d) {
+        c.setPreferredSize(d);
+        c.setMinimumSize(d);
+        c.setMaximumSize(d);
     }
 
-    /** Picks a random non-null GIF icon from the preloaded arrays in GameAssets. */
+    private String safe(Object o) {
+        String s = (o == null) ? "-" : o.toString();
+        return s.isBlank() ? "-" : s;
+    }
+
     private ImageIcon pickRandomGif(ImageIcon[] gifs) {
         if (gifs == null || gifs.length == 0) return null;
         for (int tries = 0; tries < gifs.length; tries++) {
@@ -266,7 +247,7 @@ public class EndView extends BaseGameFrame {
     }
 
     // =====================================================================================
-    // BACKGROUND PANEL – draws scaled background image 
+    // BACKGROUND PANEL
     // =====================================================================================
 
     private static class BackgroundPanel extends JPanel {
@@ -277,7 +258,6 @@ public class EndView extends BaseGameFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (bg == null) {
-                // Fallback gradient if background image is missing
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setPaint(new GradientPaint(
                         0, 0, new Color(12, 12, 20),
@@ -293,7 +273,6 @@ public class EndView extends BaseGameFrame {
             int panelH = getHeight();
             if (imgW <= 0 || imgH <= 0) return;
 
-            // "Cover" behavior – scale image to fill entire panel
             double scale = Math.max((double) panelW / imgW, (double) panelH / imgH);
             int drawW = (int) (imgW * scale);
             int drawH = (int) (imgH * scale);
@@ -304,6 +283,9 @@ public class EndView extends BaseGameFrame {
         }
     }
 
+    // =====================================================================================
+    // BUTTON
+    // =====================================================================================
 
     private static class ButtonStyled extends JButton {
         private final Color baseFill  = new Color(20, 24, 32, 235);
@@ -333,8 +315,7 @@ public class EndView extends BaseGameFrame {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             Color fill = getModel().isRollover() ? hoverFill : baseFill;
 
@@ -353,6 +334,9 @@ public class EndView extends BaseGameFrame {
         }
     }
 
+    // =====================================================================================
+    // ROUNDED BORDER
+    // =====================================================================================
 
     private static class RoundedBorder implements javax.swing.border.Border {
         private final Color color;
@@ -368,8 +352,7 @@ public class EndView extends BaseGameFrame {
         @Override
         public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(color);
             g2.setStroke(new BasicStroke(thickness));
             g2.drawRoundRect(x + 1, y + 1, w - 3, h - 3, radius, radius);

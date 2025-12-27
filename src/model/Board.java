@@ -1,147 +1,170 @@
 package model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 /**
- * Represents a single Minesweeper board.
- * Responsible for generating cells according to difficulty,
- * placing mines, numbers, question cells, surprise cells, and empty cells.
+ * Board holds a 2D grid of Cells.
+ * This version uses Factory Method via CellFactory,
+ * so Board does not "new MineCell()" etc directly.
  */
 public class Board {
-    /** Number of rows in the board. */
+
     private final int rows;
-
-    /** Number of columns in the board. */
     private final int cols;
-
-    /** 2D grid of cells (each position holds a Cell subclass). */
     private final Cell[][] grid;
 
-    /** Random generator used for placing mines, questions, and surprises. */
+    private final CellFactory factory;
     private final Random rnd = new Random();
 
-    /**
-     * Creates a board for a given difficulty level.
-     * Uses DifficultyConfig to determine board size and counts and then generates the grid.
-     */
+    // ---------------- Constructors ----------------
+
+    /** Keeps your original API: Board(level) */
     public Board(DifficultyLevel level) {
+        this(level, new DefaultCellFactory());
+    }
+
+    /** New overload that allows injecting a factory. */
+    public Board(DifficultyLevel level, CellFactory factory) {
+        this.factory = (factory != null) ? factory : new DefaultCellFactory();
+
+        // ====== IMPORTANT: adapt these getters to your DifficultyConfig names ======
         this.rows = DifficultyConfig.getRows(level);
         this.cols = DifficultyConfig.getCols(level);
+
+        int mines     = DifficultyConfig.getMines(level);
+        int questions = DifficultyConfig.getQuestionCells(level);
+        int surprises = DifficultyConfig.getSurpriseCells(level);
+        // ========================================================================
+
         this.grid = new Cell[rows][cols];
 
-        int mines         = DifficultyConfig.getMines(level);
-        int questionCells = DifficultyConfig.getQuestionCells(level);
-        int surpriseCells = DifficultyConfig.getSurpriseCells(level);
+        initEmptyGrid();
+        placeRandom(CellType.MINE, mines);
+        placeRandom(CellType.QUESTION, questions);
+        placeRandom(CellType.SURPRISE, surprises);
 
-        generate(mines, questionCells, surpriseCells);
+        // After placing specials, compute numbers (NUMBER factory decides EMPTY/NUMBER)
+        fillNumbers();
     }
 
-    /** @return number of rows. */
-    public int rows() { return rows; }
+    /**
+     * Extra constructor useful for tests (small custom board).
+     * Default = all empty.
+     */
+    public Board(int rows, int cols) {
+        this(rows, cols, new DefaultCellFactory());
+    }
 
-    /** @return number of columns. */
+    public Board(int rows, int cols, CellFactory factory) {
+        this.rows = rows;
+        this.cols = cols;
+        this.factory = (factory != null) ? factory : new DefaultCellFactory();
+        this.grid = new Cell[rows][cols];
+        initEmptyGrid();
+    }
+
+    // ---------------- Public API ----------------
+
+    public int rows() { return rows; }
     public int cols() { return cols; }
 
-    /**
-     * Returns the cell at the given row and column.
-     *
-     * @param r row index
-     * @param c column index
-     */
-    public Cell cell(int r, int c) { return grid[r][c]; }
-
-    /**
-     * Generates the entire board by placing:
-     * 1. Mines
-     * 2. Number cells around mines
-     * 3. Question cells
-     * 4. Surprise cells
-     * 5. Empty cells filling remaining spaces
-     */
-    private void generate(int mines, int questionCells, int surpriseCells) {
-        placeMines(mines);
-        placeNumbers();
-        placeQuestions(questionCells);
-        placeSurprises(surpriseCells);
-        fillEmpties();
+    public Cell cell(int r, int c) {
+        return grid[r][c];
     }
 
-    /** Randomly places a given number of mines on the board. */
-    private void placeMines(int count) {
-        int placed = 0;
-        while (placed < count) {
-            int r = rnd.nextInt(rows), c = rnd.nextInt(cols);
-            if (grid[r][c] == null) {
-                grid[r][c] = new MineCell();
-                placed++;
+    /**
+     * Optional helper for unit tests.
+     * If you already have setCell in your project - keep one version only.
+     */
+    public void setCell(int r, int c, Cell newCell) {
+        grid[r][c] = newCell;
+    }
+
+    // ---------------- Init helpers ----------------
+
+    private void initEmptyGrid() {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                grid[r][c] = factory.create(CellType.EMPTY, r, c, this);
             }
         }
     }
 
     /**
-     * For every cell that is still empty, counts adjacent mines and,
-     * if the count is > 0, places a NumberCell with the corresponding value.
+     * Place N cells of a given type in random empty positions.
      */
-    private void placeNumbers() {
-        for (int r = 0; r < rows; r++)
+    private void placeRandom(CellType type, int count) {
+        if (count <= 0) return;
+
+        List<int[]> free = new ArrayList<>();
+        for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == null) {
-                    int adj = countAdjMines(r, c);
-                    if (adj > 0) grid[r][c] = new NumberCell(adj);
+                // We treat "EmptyCell" as free spot. (After numbers fill, don't call this.)
+                if (grid[r][c] instanceof EmptyCell) {
+                    free.add(new int[]{r, c});
                 }
             }
+        }
+        Collections.shuffle(free, rnd);
+
+        int placed = 0;
+        for (int[] pos : free) {
+            if (placed >= count) break;
+            int r = pos[0], c = pos[1];
+            grid[r][c] = factory.create(type, r, c, this);
+            placed++;
+        }
     }
 
     /**
-     * Randomly places a given number of QuestionCells on empty spots.
-     * The specific Question that will be asked is chosen later by MatchController
-     * from SysData using random selection.
+     * Convert all non-mine / non-question / non-surprise cells into NUMBER-or-EMPTY.
+     * The factory returns EmptyCell when adjacent mines count is 0.
      */
-    private void placeQuestions(int count) {
-        int placed = 0;
-        while (placed < count) {
-            int r = rnd.nextInt(rows), c = rnd.nextInt(cols);
-            if (grid[r][c] == null) {
-                grid[r][c] = new QuestionCell();
-                placed++;
+    private void fillNumbers() {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                Cell cur = grid[r][c];
+                if (cur instanceof MineCell) continue;
+                if (cur instanceof QuestionCell) continue;
+                if (cur instanceof SurpriseCell) continue;
+
+                // NUMBER factory will decide EMPTY/NUMBER based on adjacency
+                grid[r][c] = factory.create(CellType.NUMBER, r, c, this);
             }
         }
     }
+	 // =====================
+	 // Testing helpers ONLY
+	 // =====================
+	
+	 /**
+	  * Allows tests to inject a specific cell into the board.
+	  * Should be used ONLY in unit tests.
+	  */
+	 public void setCellForTest(int row, int col, Cell cell) {
+	     if (row < 0 || row >= rows || col < 0 || col >= cols) {
+	         throw new IllegalArgumentException("Invalid cell position");
+	     }
+	     grid[row][col] = cell;
+	 }
 
-    /** Randomly places a given number of SurpriseCells on empty spots. */
-    private void placeSurprises(int count) {
-        int placed = 0;
-        while (placed < count) {
-            int r = rnd.nextInt(rows), c = rnd.nextInt(cols);
-            if (grid[r][c] == null) {
-                grid[r][c] = new SurpriseCell();
-                placed++;
-            }
-        }
-    }
+    // ---------------- Adjacency ----------------
 
-    /** Fills any remaining null cells with EmptyCell instances. */
-    private void fillEmpties() {
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                if (grid[r][c] == null)
-                    grid[r][c] = new EmptyCell();
-    }
-
-    /** Counts how many mines are adjacent to the given cell (8-direction). */
-    private int countAdjMines(int r, int c) {
-        int cnt = 0;
-        for (int dr = -1; dr <= 1; dr++)
+    public int countAdjacentMines(int r, int c) {
+        int count = 0;
+        for (int dr = -1; dr <= 1; dr++) {
             for (int dc = -1; dc <= 1; dc++) {
                 if (dr == 0 && dc == 0) continue;
                 int nr = r + dr, nc = c + dc;
-                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols
-                        && (grid[nr][nc] instanceof MineCell))
-                    cnt++;
+                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+                if (grid[nr][nc] instanceof MineCell) count++;
             }
-        return cnt;
+        }
+        return count;
     }
-    public void setCellForTest(int row, int col, Cell cell) {
-    	grid[row][col] = cell;
-    }
+    
+    
 }

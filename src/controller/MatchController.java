@@ -1,5 +1,5 @@
 package controller;
-
+import model.MatchListener;
 import java.util.*;
 
 import model.*;
@@ -20,6 +20,9 @@ public class MatchController {
     public static synchronized MatchController getInstance(){
         if (INSTANCE == null) INSTANCE = new MatchController();
         return INSTANCE;
+    }
+    public Match getMatch(){
+        return match;
     }
 
     private MatchController(){}
@@ -608,6 +611,16 @@ public class MatchController {
         Key qKey = new Key(row,col,true);
 
         return cell.isRevealed() && !pend.contains(qKey);
+    }
+    
+
+    public void addMatchListener(MatchListener l){
+        match.addListener(l);
+        l.onMatchChanged(match.snapshot()); // push initial state immediately
+    }
+
+    public void removeMatchListener(MatchListener l){
+        match.removeListener(l);
     }
 
     public boolean isSurpriseUsed(int playerIdx, int row, int col){
