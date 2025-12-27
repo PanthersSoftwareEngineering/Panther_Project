@@ -1,81 +1,74 @@
 package view;
 
+import view.dialogs.AbstractStyledDialog;
+
 import javax.swing.*;
-
-
 import java.awt.*;
-import static view.QuestionManagerView.RoundedButton; // משתמש בכפתורים המקומיים
+import static view.QuestionManagerView.RoundedButton;
 
 /**
- * Custom modal dialog for confirmation (Yes/No or OK/Cancel), styled to match the theme.
- * Returns JOptionPane.YES_OPTION or JOptionPane.NO_OPTION (or CANCEL/CLOSED).
+ * StyledConfirmDialog
+ * -------------------
+ * Concrete implementation of AbstractStyledDialog.
+ * Used for OK/Cancel or Yes/No style confirmations.
+ *
+ * Keeps the SAME external API:
+ *   int res = StyledConfirmDialog.show(owner, "message", JOptionPane.OK_CANCEL_OPTION);
  */
-public class StyledConfirmDialog extends JDialog {
+public class StyledConfirmDialog extends AbstractStyledDialog {
 
-    // Deep Navy matching the History card background
-    private static final Color DARK_BG = new Color(15, 18, 40, 250); 
-    // Gold accent matching the "Back to Main" button
-    private static final Color ACCENT_COLOR = new Color(255, 195, 0);
-    
-    private int result = JOptionPane.CANCEL_OPTION; // Default result
+    private final String message;
+    private final int options;
 
     /**
-     * Factory method to show the styled confirmation dialog.
-     * @param owner The parent frame.
-     * @param message The confirmation question.
-     * @param options The type of options (e.g., JOptionPane.OK_CANCEL_OPTION).
-     * @return The user's selection (e.g., JOptionPane.OK_OPTION).
+     * Factory method to show the dialog.
+     * @return JOptionPane.OK_OPTION or JOptionPane.CANCEL_OPTION
      */
     public static int show(JFrame owner, String message, int options) {
         StyledConfirmDialog dialog = new StyledConfirmDialog(owner, message, options);
-        dialog.setVisible(true);
-        return dialog.result;
+        return dialog.showDialog();
     }
 
     private StyledConfirmDialog(JFrame owner, String message, int options) {
-        super(owner, "Confirm Action", true);
+        super(owner, "Confirm Action");
+        this.message = message;
+        this.options = options;
+    }
 
-        // --- Setup basic dialog properties ---
-        setSize(500, 250);
-        setLocationRelativeTo(owner);
-        setUndecorated(true);
-        getRootPane().setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 4, true));
+    // =========================================================
+    // Template hooks
+    // =========================================================
 
-        // --- Root Panel ---
-        JPanel root = new JPanel(new BorderLayout(15, 15));
-        root.setBackground(DARK_BG);
-        root.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        // --- Message ---
-        JLabel iconLabel = new JLabel("?"); //char to be like icon
+    @Override
+    protected JPanel createMessagePanel() {
+        JLabel iconLabel = new JLabel("?");
         iconLabel.setFont(new Font("Segoe UI", Font.BOLD, 40));
-        iconLabel.setForeground(ACCENT_COLOR); // it keeps the turkiz color
-        iconLabel.setFont(new Font("Segoe UI", Font.BOLD, 40));
-        iconLabel.setForeground(ACCENT_COLOR);
-        
+        iconLabel.setForeground(accentColor());
+
         JLabel msgLabel = new JLabel(message);
         msgLabel.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         msgLabel.setForeground(Color.WHITE);
-        
-        JPanel msgPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 20));
-        msgPanel.setOpaque(false);
-        msgPanel.add(iconLabel);
-        msgPanel.add(msgLabel);
-        root.add(msgPanel, BorderLayout.CENTER);
 
-        // --- Buttons ---
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 20));
+        panel.setOpaque(false);
+        panel.add(iconLabel);
+        panel.add(msgLabel);
+
+        return panel;
+    }
+
+    @Override
+    protected JPanel createButtonsPanel() {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttons.setOpaque(false);
 
-        // OK/Yes Button
-        RoundedButton okBtn = new RoundedButton("OK", 120, 45, 18);
+        RoundedButton okBtn = createButton("OK", 120, 45, 18);
         okBtn.addActionListener(e -> {
             result = JOptionPane.OK_OPTION;
             dispose();
         });
-        
-        // Cancel/No Button
-        RoundedButton cancelBtn = new RoundedButton("Cancel", 120, 45, 18);
+
+        RoundedButton cancelBtn = createButton("Cancel", 120, 45, 18);
         cancelBtn.addActionListener(e -> {
             result = JOptionPane.CANCEL_OPTION;
             dispose();
@@ -84,13 +77,13 @@ public class StyledConfirmDialog extends JDialog {
         if (options == JOptionPane.OK_CANCEL_OPTION || options == JOptionPane.YES_NO_OPTION) {
             buttons.add(okBtn);
             buttons.add(cancelBtn);
-            getRootPane().setDefaultButton(cancelBtn); // Safer default
+            getRootPane().setDefaultButton(cancelBtn); // safer default
         } else {
-            buttons.add(okBtn); // Single button mode (if needed)
+            // single-button mode 
+            buttons.add(okBtn);
             getRootPane().setDefaultButton(okBtn);
         }
-        
-        root.add(buttons, BorderLayout.SOUTH);
-        setContentPane(root);
+
+        return buttons;
     }
 }
