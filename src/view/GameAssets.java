@@ -12,13 +12,15 @@ public final class GameAssets {
     // ---------- Paths ----------
     public static final String MAIN_BG_PATH =
             "assets/MainMenuPics/MainMenu.png";
+    
+    public static final String HISTORY_BG_PATH =
+            "assets/HistoryPics/HistoryPic.png";
 
     public static final String PLAY_BG_PATH =
             "assets/PlayerViewPics/NewPlayBack.png";
 
     public static final String END_BG_PATH =
             "assets/EndGamePics/EndBackground.png";
-
 
     public static final String MATCH_BG_PATH =
             "assets/MatchViewPics/MatchBackground.png";
@@ -98,6 +100,9 @@ public final class GameAssets {
     // ---------- Cached images (loaded once) ----------
     public static final Image MAIN_BACKGROUND =
             loadImageOnce(MAIN_BG_PATH);
+    
+    public static final Image HISTORY_BACKGROUND =
+            loadImageOnce(HISTORY_BG_PATH);
 
     public static final Image GAME_BACKGROUND =
             loadImageOnce(PLAY_BG_PATH);

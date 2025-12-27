@@ -138,16 +138,11 @@ public class MatchController {
 
         int playerIdx = match.activeIndex();
 
-        if (cell instanceof EmptyCell) {
+        if (cell instanceof EmptyCell || cell instanceof QuestionCell || cell instanceof SurpriseCell ) {
             floodReveal(b, playerIdx, row, col);
         } else {
             cell.reveal();
             applyRevealScoring(cell);
-
-            if (cell instanceof QuestionCell)
-                addPending(playerIdx, new Key(row,col,true));
-            else if (cell instanceof SurpriseCell)
-                addPending(playerIdx, new Key(row,col,false));
         }
 
         match.checkFinish();
