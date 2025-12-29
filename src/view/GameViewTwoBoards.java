@@ -379,7 +379,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
     }
 
     // ============================================================
-    // END CHECK (stay 10 seconds then open EndView)
+    // END CHECK (stay 2 seconds then open EndView)
     // ============================================================
     private void endCheck(MatchSnapshot s) {
         if (!s.finished()) return;
@@ -388,7 +388,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         if (timer != null) timer.stop();
 
-        Timer delay = new Timer(10_000, e -> {
+        Timer delay = new Timer(2_000, e -> {
             ctrl.removeMatchListener(this);
             dispose();
 
