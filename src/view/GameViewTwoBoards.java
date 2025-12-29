@@ -1,147 +1,249 @@
 package view;
 
+import controller.AppController;
+import controller.MatchController;
+import model.MatchListener;
+import model.MatchSnapshot;
+import model.SysData;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
-import controller.AppController;
-import controller.MatchController;
-import model.SysData;
-
-public class GameViewTwoBoards extends JFrame implements QuestionUI {
+/**
+ * Game screen with two boards (P1 left, P2 right) + HUD.
+ * Observer-based: Match notifies this view with MatchSnapshot.
+ */
+public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, MatchListener {
 
     private final MatchController ctrl;
     private final AppController app;
 
+    // HUD labels
     private final JLabel lblP1 = new JLabel();
     private final JLabel lblP2 = new JLabel();
     private final JLabel lblLives  = new JLabel();
     private final JLabel lblPoints = new JLabel();
     private final JLabel lblTimer  = new JLabel();
     private final JLabel lblActive = new JLabel();
+    private final JLabel lblDifficulty = new JLabel();
+
+    // ACTIVE chips (badges)
+    private final JLabel chipP1Active = new JLabel("ACTIVE", SwingConstants.CENTER);
+    private final JLabel chipP2Active = new JLabel("ACTIVE", SwingConstants.CENTER);
 
     private final JPanel board1 = new JPanel();
     private final JPanel board2 = new JPanel();
 
-    private JButton[][] btn1, btn2;
+    private CellButton[][] btn1, btn2;
 
     private Timer timer;
-    /** Was end-of-game sequence already started (to avoid duplicates)? */
     private boolean endSequenceStarted = false;
+
+    // latest snapshot (for timer refresh)
+    private volatile MatchSnapshot lastSnapshot = null;
+
     public GameViewTwoBoards(MatchController ctrl, AppController app) {
-        super("Minesweeper - Match");
+        super(app, "Minesweeper - Match");
         this.ctrl = ctrl;
         this.app  = app;
 
         ctrl.setQuestionUI(this);
 
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout(8, 8));
+        // ✅ Register as observer
+        ctrl.addMatchListener(this);
 
-        // ---------- HUD ----------
-        JPanel top = new JPanel(new GridLayout(2, 4, 8, 4));
-        top.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+        // ============================================================
+        // Background
+        // ============================================================
+        BackgroundPanel bg = new BackgroundPanel(GameAssets.MATCH_BACKGROUND);
+        bg.setLayout(new BorderLayout(8, 8));
+        setContentPane(bg);
 
-        JButton back = new JButton("Back to Main");
+        installToastLayer();
+
+        // ============================================================
+        // HUD
+        // ============================================================
+        JPanel hud = UIStyles.translucentPanel(new BorderLayout(), UIStyles.HUD_PANEL_BG);
+        hud.setBorder(UIStyles.pad(12, 16, 12, 16));
+
+        UIStyles.styleTitle(lblDifficulty);
+        lblDifficulty.setHorizontalAlignment(SwingConstants.LEFT);
+        lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
+
+        JPanel row1 = new JPanel(new BorderLayout());
+        row1.setOpaque(false);
+        row1.add(lblDifficulty, BorderLayout.WEST);
+
+        UIStyles.styleHudLabel(lblLives);
+        UIStyles.styleHudLabel(lblPoints);
+        UIStyles.styleHudLabel(lblTimer);
+        UIStyles.styleHudLabel(lblActive);
+
+        BaseGameFrame.RoundedButton back =
+                new BaseGameFrame.RoundedButton("Back to Main", 260, 64, 22);
+
         back.addActionListener(e -> {
-            timer.stop();
+            if (timer != null) timer.stop();
+
+            // ✅ unregister listener to avoid leaks
+            ctrl.removeMatchListener(this);
+
             dispose();
             if (app != null) app.showMainMenu();
         });
 
-        top.add(lblLives);
-        top.add(lblPoints);
-        top.add(lblTimer);
-        top.add(back);
-        top.add(lblActive);
-        top.add(new JLabel());
-        top.add(new JLabel());
-        top.add(new JLabel());
-        add(top, BorderLayout.NORTH);
+        JPanel row2 = new JPanel(new GridLayout(1, 5, 14, 0));
+        row2.setOpaque(false);
+        row2.add(lblLives);
+        row2.add(lblPoints);
+        row2.add(lblTimer);
+        row2.add(lblActive);
+        row2.add(back);
 
-        // ---------- Board containers ----------
+        JPanel hudInner = new JPanel();
+        hudInner.setOpaque(false);
+        hudInner.setLayout(new BoxLayout(hudInner, BoxLayout.Y_AXIS));
+        hudInner.add(row1);
+        hudInner.add(Box.createVerticalStrut(8));
+        hudInner.add(row2);
+
+        hud.add(hudInner, BorderLayout.CENTER);
+
+        JPanel topWrap = new JPanel(new BorderLayout());
+        topWrap.setOpaque(false);
+        topWrap.setBorder(UIStyles.pad(8, 8, 0, 8));
+        topWrap.add(hud, BorderLayout.CENTER);
+
+        bg.add(topWrap, BorderLayout.NORTH);
+
+        // ============================================================
+        // Boards headers + ACTIVE chip
+        // ============================================================
         lblP1.setHorizontalAlignment(SwingConstants.CENTER);
         lblP2.setHorizontalAlignment(SwingConstants.CENTER);
+        UIStyles.styleTitle(lblP1);
+        UIStyles.styleTitle(lblP2);
 
         JPanel left  = new JPanel(new BorderLayout());
         JPanel right = new JPanel(new BorderLayout());
-        left.add(lblP1, BorderLayout.NORTH);
-        right.add(lblP2, BorderLayout.NORTH);
+        left.setOpaque(false);
+        right.setOpaque(false);
 
-        board1.setBorder(BorderFactory.createLineBorder(new Color(0,120,215), 2));
-        board2.setBorder(BorderFactory.createLineBorder(new Color(46,139,87), 2));
-        board1.setBackground(new Color(225,240,255));
-        board2.setBackground(new Color(229,244,234));
+        chipP1Active.setOpaque(true);
+        chipP1Active.setForeground(UIStyles.CHIP_TEXT);
+        chipP1Active.setFont(UIStyles.HUD_FONT_SMALL);
+        chipP1Active.setBorder(UIStyles.pad(4, 10, 4, 10));
+
+        chipP2Active.setOpaque(true);
+        chipP2Active.setForeground(UIStyles.CHIP_TEXT);
+        chipP2Active.setFont(UIStyles.HUD_FONT_SMALL);
+        chipP2Active.setBorder(UIStyles.pad(4, 10, 4, 10));
+
+        JPanel head1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 6));
+        head1.setOpaque(false);
+        head1.add(lblP1);
+        head1.add(chipP1Active);
+
+        JPanel head2 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 6));
+        head2.setOpaque(false);
+        head2.add(lblP2);
+        head2.add(chipP2Active);
+
+        left.add(head1, BorderLayout.NORTH);
+        right.add(head2, BorderLayout.NORTH);
+
+        board1.setBorder(BorderFactory.createLineBorder(new Color(0, 120, 215), 2));
+        board2.setBorder(BorderFactory.createLineBorder(new Color(46, 139, 87), 2));
+        board1.setOpaque(false);
+        board2.setOpaque(false);
 
         left.add(board1, BorderLayout.CENTER);
         right.add(board2, BorderLayout.CENTER);
 
-        JPanel both = new JPanel(new GridLayout(1,2,8,8));
-        both.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
+        JPanel both = new JPanel(new GridLayout(1, 2, 8, 8));
+        both.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        both.setOpaque(false);
         both.add(left);
         both.add(right);
-        add(both, BorderLayout.CENTER);
 
+        bg.add(both, BorderLayout.CENTER);
+
+        // ============================================================
+        // Build buttons once
+        // ============================================================
         buildBoards();
-        refreshAll();
 
-        timer = new Timer(1000, e -> lblTimer.setText("Time: " + ctrl.getElapsedSeconds() + "s"));
+        // ============================================================
+        // Timer: updates only the clock label
+        // ============================================================
+        timer = new Timer(1000, e -> {
+            MatchSnapshot s = lastSnapshot;
+            long sec = (s != null) ? s.elapsedSeconds() : ctrl.getElapsedSeconds();
+            lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(sec));
+
+            // not necessary, but keeps it synced
+            lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
+        });
         timer.start();
 
-        pack();
+        // Full screen
+        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+        setSize(screen.width, screen.height);
         setLocationRelativeTo(null);
+        setResizable(false);
         setVisible(true);
     }
 
     // ============================================================
-    // BUILD BOARDS
+    // OBSERVER CALLBACK
     // ============================================================
+    @Override
+    public void onMatchChanged(MatchSnapshot s) {
+        this.lastSnapshot = s;
 
+        SwingUtilities.invokeLater(() -> {
+            refreshFromSnapshot(s);
+            endCheck(s);
+        });
+    }
+
+    // ============================================================
+    // BUILD BOARDS (listeners only call controller actions)
+    // ============================================================
     private void buildBoards() {
         int R = ctrl.rows(), C = ctrl.cols();
-        btn1 = new JButton[R][C];
-        btn2 = new JButton[R][C];
+        btn1 = new CellButton[R][C];
+        btn2 = new CellButton[R][C];
 
-        board1.setLayout(new GridLayout(R,C,1,1));
-        board2.setLayout(new GridLayout(R,C,1,1));
+        board1.setLayout(new GridLayout(R, C, 6, 6));
+        board2.setLayout(new GridLayout(R, C, 6, 6));
         board1.removeAll();
         board2.removeAll();
 
-        for (int r=0;r<R;r++)
-            for (int c=0;c<C;c++) {
+        Dimension cellSize = new Dimension(44, 44);
 
-                JButton a = new JButton("·");
-                JButton b = new JButton("·");
+        for (int r = 0; r < R; r++) {
+            for (int c = 0; c < C; c++) {
 
-                a.setMargin(new Insets(0,0,0,0));
-                b.setMargin(new Insets(0,0,0,0));
-                a.setFont(a.getFont().deriveFont(Font.BOLD,14f));
-                b.setFont(b.getFont().deriveFont(Font.BOLD,14f));
-                a.setOpaque(true);
-                b.setOpaque(true);
-                a.setBackground(new Color(210,230,250));
-                b.setBackground(new Color(212,238,219));
+                CellButton a = new CellButton("·", CellStyle.P1_BASE);
+                CellButton b = new CellButton("·", CellStyle.P2_BASE);
+                a.setPreferredSize(cellSize);
+                b.setPreferredSize(cellSize);
 
                 final int rr = r, cc = c;
 
-                // -------------------------------------------
-                // PLAYER 1 BOARD CLICK
-                // -------------------------------------------
+                // Player 1 board click
                 a.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
-                        if (!ctrl.isPlayer1Active()) return;  // רק השחקן הפעיל
+                        if (!ctrl.isPlayer1Active()) return;
                         final int playerIdx = 0;
 
-                        // תא שאלה/הפתעה שכבר טופל
                         if (ctrl.isQuestionUsed(0, rr, cc) || ctrl.isSurpriseUsed(0, rr, cc)) {
-                            JOptionPane.showMessageDialog(
-                                    GameViewTwoBoards.this,
-                                    "תא זה כבר נבחר בעבר!",
-                                    "תא משומש",
-                                    JOptionPane.INFORMATION_MESSAGE
-                            );
+                            Toast.show(GameViewTwoBoards.this, "תא זה כבר נבחר בעבר!");
                             return;
                         }
 
@@ -153,32 +255,23 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
                                 ctrl.reveal(rr, cc);
                             } else {
                                 String msg = ctrl.consumeLastSurpriseMessage();
-                                if (msg != null)
-                                    JOptionPane.showMessageDialog(GameViewTwoBoards.this, msg);
+                                if (msg != null) Toast.show(GameViewTwoBoards.this, msg);
                             }
                         }
 
-                        refreshAll();
-                        endCheck();
+                        // ✅ no manual refresh – snapshot will arrive
                     }
                 });
 
-                // -------------------------------------------
-                // PLAYER 2 BOARD CLICK
-                // -------------------------------------------
+                // Player 2 board click
                 b.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
-                        if (ctrl.isPlayer1Active()) return;   // רק השחקן הפעיל
+                        if (ctrl.isPlayer1Active()) return;
                         final int playerIdx = 1;
 
                         if (ctrl.isQuestionUsed(1, rr, cc) || ctrl.isSurpriseUsed(1, rr, cc)) {
-                            JOptionPane.showMessageDialog(
-                                    GameViewTwoBoards.this,
-                                    "תא זה כבר נבחר בעבר!",
-                                    "תא משומש",
-                                    JOptionPane.INFORMATION_MESSAGE
-                            );
+                            Toast.show(GameViewTwoBoards.this, "תא זה כבר נבחר בעבר!");
                             return;
                         }
 
@@ -190,13 +283,11 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
                                 ctrl.reveal(rr, cc);
                             } else {
                                 String msg = ctrl.consumeLastSurpriseMessage();
-                                if (msg != null)
-                                    JOptionPane.showMessageDialog(GameViewTwoBoards.this, msg);
+                                if (msg != null) Toast.show(GameViewTwoBoards.this, msg);
                             }
                         }
 
-                        refreshAll();
-                        endCheck();
+                        // ✅ no manual refresh – snapshot will arrive
                     }
                 });
 
@@ -205,100 +296,102 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
                 board1.add(a);
                 board2.add(b);
             }
+        }
+
+        board1.revalidate();
+        board2.revalidate();
+        board1.repaint();
+        board2.repaint();
     }
 
     // ============================================================
-    // REFRESH ALL
+    // REFRESH UI FROM SNAPSHOT
     // ============================================================
+    private void refreshFromSnapshot(MatchSnapshot s) {
+        boolean p1Active = (s.activeIndex() == 0);
 
-    private void refreshAll(){
-        boolean p1Active = ctrl.isPlayer1Active();
+        // Names
+        lblP1.setText(s.p1());
+        lblP2.setText(s.p2());
 
-        // תוויות השחקנים + המציין "ACTIVE BOARD"
-        lblP1.setText(ctrl.getP1() + (p1Active ? "  - ACTIVE BOARD" : ""));
-        lblP2.setText(ctrl.getP2() + (!p1Active ? "  - ACTIVE BOARD" : ""));
+        // HUD
+        lblLives.setText("Lives: " + s.lives());
+        lblPoints.setText("Points: " + s.points());
+        lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(s.elapsedSeconds()));
+        lblActive.setText("Active: " + (p1Active ? s.p1() : s.p2()));
+        lblDifficulty.setText("Difficulty: " + s.level().name());
 
-        lblLives.setText("Lives: " + ctrl.getLives());
-        lblPoints.setText("Points: " + ctrl.getPoints());
-        lblActive.setText("Active: " + (p1Active ? ctrl.getP1() : ctrl.getP2()));
-        lblTimer.setText("Time: " + ctrl.getElapsedSeconds() + "s");
+        // ACTIVE chips
+        chipP1Active.setVisible(p1Active);
+        chipP2Active.setVisible(!p1Active);
+        chipP1Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P1);
+        chipP2Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P2);
 
-        String[][] g1 = ctrl.symbolsOfBoard(0);
-        String[][] g2 = ctrl.symbolsOfBoard(1);
+        String[][] g1 = s.boardP1();
+        String[][] g2 = s.boardP2();
 
-        // ----- Board 1 -----
-        for (int r=0;r<g1.length;r++)
-            for(int c=0;c<g1[0].length;c++){
-                JButton btn = btn1[r][c];
-                btn.setText(g1[r][c]);
+        // Board 1
+        for (int r = 0; r < g1.length; r++) {
+            for (int c = 0; c < g1[0].length; c++) {
+                CellButton btn = btn1[r][c];
+                String sym = g1[r][c];
+                btn.setText(sym);
 
-                // צבע בסיס
-                btn.setBackground(new Color(210,230,250));
-                btn.setForeground(Color.BLACK);
+                btn.setBaseColor(CellStyle.colorForSymbol(sym, 0));
+                btn.setForeground(CellStyle.textColorForSymbol(sym));
 
-                // תאים משומשים (שאלה/הפתעה שכבר הופעלה)
-                if (ctrl.isQuestionUsed(0,r,c) || ctrl.isSurpriseUsed(0,r,c)) {
-                    btn.setBackground(new Color(100,100,100));
+                if (ctrl.isQuestionUsed(0, r, c) || ctrl.isSurpriseUsed(0, r, c)) {
+                    btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
                 }
             }
+        }
 
-        // ----- Board 2 -----
-        for (int r=0;r<g2.length;r++)
-            for(int c=0;c<g2[0].length;c++){
-                JButton btn = btn2[r][c];
-                btn.setText(g2[r][c]);
+        // Board 2
+        for (int r = 0; r < g2.length; r++) {
+            for (int c = 0; c < g2[0].length; c++) {
+                CellButton btn = btn2[r][c];
+                String sym = g2[r][c];
+                btn.setText(sym);
 
-                btn.setBackground(new Color(212,238,219));
-                btn.setForeground(Color.BLACK);
+                btn.setBaseColor(CellStyle.colorForSymbol(sym, 1));
+                btn.setForeground(CellStyle.textColorForSymbol(sym));
 
-                if (ctrl.isQuestionUsed(1,r,c) || ctrl.isSurpriseUsed(1,r,c)) {
-                    btn.setBackground(new Color(90,90,90));
+                if (ctrl.isQuestionUsed(1, r, c) || ctrl.isSurpriseUsed(1, r, c)) {
+                    btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
                 }
             }
+        }
 
-        // הפעלה/כיבוי של הלוחות (כבר היה אצלך)
+        // enable/disable boards
         setPanelEnabled(board1, p1Active);
         setPanelEnabled(board2, !p1Active);
 
         repaint();
     }
 
-    private static void setPanelEnabled(Container p, boolean enabled){
-        for (Component c : p.getComponents()){
+    private static void setPanelEnabled(Container p, boolean enabled) {
+        for (Component c : p.getComponents()) {
             c.setEnabled(enabled);
-            if (c instanceof Container cc)
-                setPanelEnabled(cc, enabled);
+            if (c instanceof Container cc) setPanelEnabled(cc, enabled);
         }
     }
 
-    private void endCheck(){
-        // אם המשחק עדיין לא נגמר – אין מה לעשות
-        if (!ctrl.isFinished()) {
-            return;
-        }
-
-        // אם כבר התחלנו רצף סיום – לא להפעיל שוב
-        if (endSequenceStarted) {
-            return;
-        }
+    // ============================================================
+    // END CHECK (stay 2 seconds then open EndView)
+    // ============================================================
+    private void endCheck(MatchSnapshot s) {
+        if (!s.finished()) return;
+        if (endSequenceStarted) return;
         endSequenceStarted = true;
 
-        // עוצרים את הטיימר של השעון
-        if (timer != null) {
-            timer.stop();
-        }
+        if (timer != null) timer.stop();
 
-        // מעדכנים את המסך לפי מצב הלוחות אחרי finishAndClose (כל התאים חשופים)
-        refreshAll();
-
-        // טיימר חד-פעמי שאחרי 10 שניות יסגור את המסך ויפתח את EndView
-        Timer delay = new Timer(10_000, e -> {
-            // סוגרים את חלון המשחק
+        Timer delay = new Timer(2_000, e -> {
+            ctrl.removeMatchListener(this);
             dispose();
 
-            // לוקחים את רשומת המשחק מה-Controller
             SysData.GameRecord rec = ctrl.getLastRecord();
             if (app != null && rec != null) {
                 app.openEndScreen(rec);
@@ -308,31 +401,17 @@ public class GameViewTwoBoards extends JFrame implements QuestionUI {
         delay.start();
     }
 
-
     // ============================================================
     // QUESTION UI
     // ============================================================
-
     @Override
-    public int ask(QuestionDTO q){
-        Object choice = JOptionPane.showInputDialog(
-            this,
-            q.text(),
-            "Question ("+q.levelLabel()+")",
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            new Object[]{
-                    "1) "+q.options().get(0),
-                    "2) "+q.options().get(1),
-                    "3) "+q.options().get(2),
-                    "4) "+q.options().get(3)},
-            null
-        );
-        if (choice == null) return -1;
-        return choice.toString().charAt(0)-'1';
+    public int ask(QuestionDTO q) {
+        QuestionDialog dialog = new QuestionDialog(this, q);
+        return dialog.showDialog();
     }
 
-    public void showSelf(){
+    @Override
+    public void showSelf() {
         setLocationRelativeTo(null);
         setVisible(true);
     }
