@@ -8,6 +8,21 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+/**
+ * New match screen:
+ * - Lets the user enter Player 1 / Player 2 names
+ * - Lets the user choose difficulty (Easy / Medium / Hard)
+ * - Shows info about each difficulty (lives, mines, surprises, questions)
+ *
+ * Validations on Start:
+ * 1) Names cannot be empty
+ * 2) Names cannot be the same (case-insensitive)
+ * 3) Names must be at most 10 characters
+ * 4) Names may contain only English letters and digits (A-Z, a-z, 0-9)
+ *
+ * NOTE: This class keeps your original UI and logic.
+ * Only the requested validations were added.
+ */
 public class NewMatchView extends BaseGameFrame {
 
     // ----- player fields -----
@@ -36,7 +51,7 @@ public class NewMatchView extends BaseGameFrame {
     private final JLabel hardQuestionsLabel  = new JLabel();
 
     /** Selected difficulty – EASY by default. */
-    private String selectedDifficulty = "EASY";
+    private String selectedDifficulty = null;
 
     public NewMatchView(AppController app) {
         super(app, "New Match");
@@ -237,11 +252,12 @@ public class NewMatchView extends BaseGameFrame {
             refreshDifficultyStyles();
             updateDifficultyInfo();
         });
-
-        // initial state
-        selectedDifficulty = "EASY";
+        
+      // initial 
         refreshDifficultyStyles();
-        updateDifficultyInfo();
+
+
+        
     }
 
     private void styleDifficultyButton(JButton btn) {
@@ -350,6 +366,7 @@ public class NewMatchView extends BaseGameFrame {
             boolean p1Empty = name1.isEmpty();
             boolean p2Empty = name2.isEmpty();
 
+            // 1) Names cannot be empty
             if (p1Empty || p2Empty) {
                 StyledAlertDialog.show(
                         this,
@@ -364,7 +381,57 @@ public class NewMatchView extends BaseGameFrame {
                 return;
             }
 
-            // NEW RULE: names cannot be the same (case-insensitive)
+            // 2) Names must be at most 10 characters
+            if (name1.length() > 10) {
+                StyledAlertDialog.show(
+                        this,
+                        "Invalid Player 1 Name",
+                        "Player 1 name must be at most 10 characters.",
+                        true
+                );
+                p1.requestFocusInWindow();
+                p1.selectAll();
+                return;
+            }
+
+            if (name2.length() > 10) {
+                StyledAlertDialog.show(
+                        this,
+                        "Invalid Player 2 Name",
+                        "Player 2 name must be at most 10 characters.",
+                        true
+                );
+                p2.requestFocusInWindow();
+                p2.selectAll();
+                return;
+            }
+
+            // 3) Names may contain only English letters and digits
+            if (!isOnlyEnglishLettersAndDigits(name1)) {
+                StyledAlertDialog.show(
+                        this,
+                        "Invalid Player 1 Name",
+                        "Player 1 name may contain only English letters and digits.",
+                        true
+                );
+                p1.requestFocusInWindow();
+                p1.selectAll();
+                return;
+            }
+
+            if (!isOnlyEnglishLettersAndDigits(name2)) {
+                StyledAlertDialog.show(
+                        this,
+                        "Invalid Player 2 Name",
+                        "Player 2 name may contain only English letters and digits.",
+                        true
+                );
+                p2.requestFocusInWindow();
+                p2.selectAll();
+                return;
+            }
+
+            // 4) Names cannot be the same (case-insensitive)
             if (name1.equalsIgnoreCase(name2)) {
                 StyledAlertDialog.show(
                         this,
@@ -376,6 +443,17 @@ public class NewMatchView extends BaseGameFrame {
                 p2.selectAll();
                 return;
             }
+         // Difficulty must be selected
+            if (selectedDifficulty == null) {
+                StyledAlertDialog.show(
+                        this,
+                        "Difficulty Required",
+                        "Please choose a difficulty level before starting the game.",
+                        true
+                );
+                return;
+            }
+
 
             try {
                 app.onStart(name1, name2, selectedDifficulty);
@@ -409,8 +487,14 @@ public class NewMatchView extends BaseGameFrame {
 
     // ===================== small helpers =====================
 
+    /** Normalize spaces: trim and collapse multiple spaces to one. */
     private static String normName(String s) {
         return s == null ? "" : s.trim().replaceAll("\\s+", " ");
+    }
+
+    /** Returns true only if the string is made of English letters and digits (A-Z, a-z, 0-9). */
+    private static boolean isOnlyEnglishLettersAndDigits(String s) {
+    	 return s != null && s.matches("^[A-Za-z0-9]+( [A-Za-z0-9]+)*$");
     }
 
     private void styleTextField(JTextField f) {

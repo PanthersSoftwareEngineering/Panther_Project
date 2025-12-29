@@ -20,7 +20,6 @@ import java.awt.event.ComponentEvent;
 public abstract class BaseGameFrame extends JFrame {
 
     protected final AppController app;
-    private Point fixedLocation;   // to prevent dragging
 
     // =========================================================
     //  In-frame popup (toast)
@@ -41,17 +40,8 @@ public abstract class BaseGameFrame extends JFrame {
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
-        fixedLocation = getLocation();
 
-        // prevent dragging (force window back to fixedLocation)
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentMoved(ComponentEvent e) {
-                if (!getLocation().equals(fixedLocation)) {
-                    SwingUtilities.invokeLater(() -> setLocation(fixedLocation));
-                }
-            }
-        });
+        
 
         // when user clicks the OS X/close button
         addWindowListener(new java.awt.event.WindowAdapter() {
