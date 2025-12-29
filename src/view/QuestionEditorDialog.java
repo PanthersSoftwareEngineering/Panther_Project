@@ -23,7 +23,7 @@ public class QuestionEditorDialog extends JDialog {
     private final JTextArea taText;
     private final JComboBox<String> cbLevel;
     private final JTextField tfOpt1, tfOpt2, tfOpt3, tfOpt4;
-    private final JSpinner spCorrect;
+    private final JComboBox<String> cbCorrect;
 
     // --- Navy/Gold Styling (Matching History/Main Menu) ---
     private static final Color DARK_BG = new Color(15, 18, 40, 250);
@@ -89,14 +89,20 @@ public class QuestionEditorDialog extends JDialog {
         tfOpt3 = createOptionField(original, 2);
         tfOpt4 = createOptionField(original, 3);
 
-        spCorrect = new JSpinner(new SpinnerNumberModel(isAddMode ? 0 : original.correctIndex(), 0, 3, 1));
-        styleInput(spCorrect);
+        // Create a dropdown with A, B, C, D
+        cbCorrect = new JComboBox<>(new String[]{"A", "B", "C", "D"});
+
+        // If editing, set the current correct answer
+        if (!isAddMode) {
+            cbCorrect.setSelectedIndex(original.correctIndex());
+        }
+        styleInput(cbCorrect);
 
         // Build UI Rows
         addStyledRow(inputGrid, gbc, "ID (Auto):", tfId, 0, 0, 1);
         addStyledRow(inputGrid, gbc, "Question Text:", scrollText, 0, 1, 3);
         addStyledRow(inputGrid, gbc, "Level:", cbLevel, 0, 2, 1);
-        addStyledRow(inputGrid, gbc, "Correct (0-3):", spCorrect, 1, 2, 1);
+        addStyledRow(inputGrid, gbc, "Correct (A-D):", cbCorrect, 1, 2, 1);
         addStyledRow(inputGrid, gbc, "Option 1 (A):", tfOpt1, 0, 3, 1);
         addStyledRow(inputGrid, gbc, "Option 2 (B):", tfOpt2, 1, 3, 1);
         addStyledRow(inputGrid, gbc, "Option 3 (C):", tfOpt3, 0, 4, 1);
@@ -138,12 +144,18 @@ public class QuestionEditorDialog extends JDialog {
             tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
         } else if (comp instanceof JComboBox<?> cb) {
             cb.setBorder(new LineBorder(GOLD_ACCENT, 1));
-        } else if (comp instanceof JSpinner sp) {
-            sp.setBorder(new LineBorder(GOLD_ACCENT, 1));
-            JFormattedTextField field = ((JSpinner.DefaultEditor) sp.getEditor()).getTextField();
-            field.setBackground(FIELD_BG);
-            field.setForeground(Color.WHITE);
+            // This ensures the items inside the dropdown look good too
+            cb.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    l.setBackground(isSelected ? GOLD_ACCENT : FIELD_BG);
+                    l.setForeground(isSelected ? Color.BLACK : Color.WHITE);
+                    return l;
+                }
+            });
         }
+    
     }
 
     private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component,
@@ -203,12 +215,10 @@ public class QuestionEditorDialog extends JDialog {
 
         if (o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
             showValidationError("All 4 options must be filled (A, B, C, D).");
-
             if (o1.isEmpty()) tfOpt1.requestFocusInWindow();
             else if (o2.isEmpty()) tfOpt2.requestFocusInWindow();
             else if (o3.isEmpty()) tfOpt3.requestFocusInWindow();
             else tfOpt4.requestFocusInWindow();
-
             return;
         }
 
@@ -219,20 +229,18 @@ public class QuestionEditorDialog extends JDialog {
             return;
         }
 
-        int correct = (Integer) spCorrect.getValue();
-        if (correct < 0 || correct > 3) {
-            showValidationError("Correct index must be between 0 and 3.");
-            return;
-        }
+        // Get the index (0 for A, 1 for B, etc.)
+        int correctIdx = cbCorrect.getSelectedIndex(); 
 
-        // If all ok -> build object
+        // Build the result object (removed duplicate assignment)
         this.result = new Question(
                 id,
                 text,
                 opts,
-                correct,
+                correctIdx, // Use the correct variable name here
                 QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
         );
+        
         dispose();
     }
 }
