@@ -32,6 +32,18 @@ public abstract class BaseGameFrame extends JFrame {
         super(title);
         this.app = app;
 
+        // --- Changing the Java Coffee Icon to a bomb one ---
+        try {
+            // Load the image
+        	// Set the taskbar and window icon
+            if (GameAssets.GAME_ICON != null) {
+                this.setIconImage(GameAssets.GAME_ICON);
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load game icon: " + e.getMessage());
+            System.out.println("[DEBUG] Game icon is null. Check path in GameAssets.");
+        }
+        
         // --- close behaviour: we decide in confirmExit() ---
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
