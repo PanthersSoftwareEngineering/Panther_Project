@@ -370,10 +370,12 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
     // ============================
     @Override
     public int ask(QuestionDTO q) {
-        int correct = ctrl.getLastQuestionCorrectIndex();
-        QuestionDialog dialog = new QuestionDialog(this, q, correct);
+        JFrame owner = (JFrame) SwingUtilities.getWindowAncestor(this);
+        int correct = ctrl.getLastQuestionCorrectIndex(); // or q.correctIndex() if you moved it into DTO
+        QuestionDialog dialog = new QuestionDialog(owner, q, correct);
         return dialog.showDialog();
     }
+
 
     @Override
     public boolean confirmActivation(String kindLabel, int costPoints) {
