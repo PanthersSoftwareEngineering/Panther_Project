@@ -1,54 +1,101 @@
 package controller;
-import model.MatchListener;
-import java.util.*;
 
 import model.*;
 import view.QuestionDTO;
 import view.QuestionUI;
 
+import java.util.*;
+
 /**
- * Main controller for a single match (Singleton).
- * Coordinates between the model (Match, Board, SysData) and the game view.
- * Contains all game logic such as revealing cells, handling questions,
- * surprise cells, scoring, and turn switching.
+ * MatchController
+ * ==============
+ * Controller for a single match (Singleton).
+ *
+ * IMPORTANT FIX:
+ * We do NOT rely on Match to notify observers.
+ * The controller owns a listener list and publishes snapshots after every state change.
  */
 public class MatchController {
 
     // ---------- Singleton ----------
     private static MatchController INSTANCE;
 
-    public static synchronized MatchController getInstance(){
+    public static synchronized MatchController getInstance() {
         if (INSTANCE == null) INSTANCE = new MatchController();
         return INSTANCE;
     }
-    public Match getMatch(){
-        return match;
-    }
 
-    private MatchController(){}
+    private MatchController() {}
 
     // ---------- Current session state ----------
-    private Match       match;
-    private SysData     sys;
+    private Match match;
+    private SysData sys;
     private AppController app;
-    private QuestionUI  questionUI;
+    private QuestionUI questionUI;
 
-    /** Random generator for surprises and 50/50 cases in question table. */
     private final Random rnd = new Random();
-    
-    // Directions of 8 neighbors (for flood reveal).
+
     private static final int[] DR = {-1,-1,-1,0,0,1,1,1};
     private static final int[] DC = {-1, 0, 1,-1,1,-1,0,1};
-    
-    /** Last finished game record (used by GameView to open EndView after delay). */
-    private SysData.GameRecord lastRecord = null;
 
-    public SysData.GameRecord getLastRecord(){
-        return lastRecord;
+    private SysData.GameRecord lastRecord = null;
+    public SysData.GameRecord getLastRecord(){ return lastRecord; }
+
+    // ✅ Controller-managed observers
+    private final List<MatchListener> listeners = new ArrayList<>();
+
+    private void publish() {
+        if (match == null) return;
+        MatchSnapshot s = match.snapshot();
+        for (MatchListener l : new ArrayList<>(listeners)) {
+            l.onMatchChanged(s);
+        }
     }
 
-    
-    /** Key for pending interactions (question / surprise) per player. */
+    // ✅ Time runs always (independent of Match implementation)
+    private long matchStartMillis = 0;
+    private long frozenElapsedSeconds = -1;
+
+    public long getElapsedSeconds(){
+        if (frozenElapsedSeconds >= 0) return frozenElapsedSeconds;
+        if (matchStartMillis == 0) return 0;
+        return (System.currentTimeMillis() - matchStartMillis) / 1000;
+    }
+
+    // ✅ For QuestionDialog coloring
+    private int lastQuestionCorrectIndex = -1;
+    public int getLastQuestionCorrectIndex(){ return lastQuestionCorrectIndex; }
+
+    // ✅ Interaction breakdown for Toast
+    private int lastActivationCost = 0;   // positive number (5/8/12)
+    private int lastEffectPoints   = 0;
+    private int lastEffectLives    = 0;
+    private int lastNetPoints      = 0;
+    private int lastNetLives       = 0;
+    private String lastInteractionMessage = null;
+
+    public int getLastActivationCost(){ return lastActivationCost; }
+    public int getLastEffectPoints(){ return lastEffectPoints; }
+    public int getLastEffectLives(){ return lastEffectLives; }
+    public int getLastNetPoints(){ return lastNetPoints; }
+    public int getLastNetLives(){ return lastNetLives; }
+
+    private void setLastInteraction(int cost, int effPts, int effLives, String msg){
+        lastActivationCost = cost;
+        lastEffectPoints   = effPts;
+        lastEffectLives    = effLives;
+        lastNetPoints      = -cost + effPts;
+        lastNetLives       = effLives;
+        lastInteractionMessage = msg;
+    }
+
+    public String consumeLastInteractionMessage(){
+        String s = lastInteractionMessage;
+        lastInteractionMessage = null;
+        return s;
+    }
+
+    // ---------- Pending interactions ----------
     private static final class Key {
         final int r,c;
         final boolean isQuestion;
@@ -64,16 +111,11 @@ public class MatchController {
     private final Set<Key> pendingP1 = new HashSet<>();
     private final Set<Key> pendingP2 = new HashSet<>();
 
-    private String lastSurpriseMessage = null;
-
-    // ---------- Question & Surprise effect holders ----------
-
-    /** אפקט של שאלה: נקודות + חיים + בונוסים מיוחדים */
     private static final class QuestionEffect {
         final int pointsDelta;
         final int livesDelta;
-        final boolean revealMineBonus;   // חשיפת מוקש (ללא ניקוד)
-        final boolean revealAreaBonus;   // חשיפת 3x3 (ללא ניקוד)
+        final boolean revealMineBonus;
+        final boolean revealAreaBonus;
 
         QuestionEffect(int p,int l,boolean mine,boolean area){
             this.pointsDelta = p;
@@ -83,26 +125,46 @@ public class MatchController {
         }
     }
 
-    /** אפקט של Surprise: נקודות + חיים */
     private static final class SurpriseEffect {
         final int pointsDelta;
         final int livesDelta;
         SurpriseEffect(int p,int l){ pointsDelta=p; livesDelta=l; }
     }
 
-    // ---------- init/reset for a new match ----------
+    // ---------- init/reset ----------
     public synchronized void init(Match match, SysData sys, AppController app){
         this.match = match;
         this.sys   = sys;
         this.app   = app;
         this.questionUI = null;
+
         pendingP1.clear();
         pendingP2.clear();
-        lastSurpriseMessage = null;
+
+        lastRecord = null;
+
+        lastQuestionCorrectIndex = -1;
+        setLastInteraction(0,0,0,null);
+
+        matchStartMillis = System.currentTimeMillis();
+        frozenElapsedSeconds = -1;
+
+        publish(); // initial snapshot
     }
 
     public void setQuestionUI(QuestionUI ui){
         this.questionUI = ui;
+    }
+
+    // ---------- Observers ----------
+    public void addMatchListener(MatchListener l){
+        if (l == null) return;
+        if (!listeners.contains(l)) listeners.add(l);
+        if (match != null) l.onMatchChanged(match.snapshot());
+    }
+
+    public void removeMatchListener(MatchListener l){
+        listeners.remove(l);
     }
 
     // ---------- Read-only accessors ----------
@@ -113,13 +175,17 @@ public class MatchController {
     public int     getLives(){ return match.lives(); }
     public int     getPoints(){ return match.points(); }
     public boolean isPlayer1Active(){ return match.activeIndex() == 0; }
-    public long    getElapsedSeconds(){ return match.elapsedSeconds(); }
     public int     rows(){ return match.board1().rows(); }
     public int     cols(){ return match.board1().cols(); }
 
     public boolean isRevealed(int playerIdx,int row,int col){
         Board b = (playerIdx==0)? match.board1() : match.board2();
         return b.cell(row,col).isRevealed();
+    }
+
+    public boolean isFlagged(int playerIdx, int row, int col){
+        Board b = (playerIdx==0)? match.board1() : match.board2();
+        return b.cell(row,col).isFlagged();
     }
 
     public String[][] symbolsOfBoard(int playerIndex){
@@ -141,7 +207,7 @@ public class MatchController {
 
         int playerIdx = match.activeIndex();
 
-        if (cell instanceof EmptyCell || cell instanceof QuestionCell || cell instanceof SurpriseCell ) {
+        if (cell instanceof EmptyCell || cell instanceof QuestionCell || cell instanceof SurpriseCell) {
             floodReveal(b, playerIdx, row, col);
         } else {
             cell.reveal();
@@ -151,14 +217,18 @@ public class MatchController {
         match.checkFinish();
         if (match.isFinished()) {
             finishAndClose();
+            publish();
             return;
         }
 
         endTurn();
+        publish();
     }
 
     /**
      * Tries to interact with a pending Question/SURPRISE cell.
+     * ✅ confirm first, then pay activation cost, then apply effect
+     * ✅ stores lastInteraction fields for the view toast
      */
     public boolean tryInteract(int playerIdx,int row,int col){
         if (playerIdx != match.activeIndex()) return false;
@@ -170,116 +240,147 @@ public class MatchController {
         Board b = (playerIdx==0)? match.board1() : match.board2();
         Cell  cell = b.cell(row,col);
 
-        // ----- Question cell -----
+        // ---------- Question ----------
         if (pend.contains(qKey) && cell instanceof QuestionCell){
 
-            Question      q = sys.drawRandomQuestion();
-            boolean       right;
-            QuestionLevel qLevel;
+            setLastInteraction(0,0,0,null);
+            lastQuestionCorrectIndex = -1;
 
-            if (q == null){
-                lastSurpriseMessage = "No questions in bank. Counted as correct.";
-                right  = true;
-                qLevel = QuestionLevel.EASY;
-
-            } else {
-                QuestionDTO dto = new QuestionDTO(
-                        q.id(), q.text(), q.options(), q.level().name()
-                );
-
-                if (questionUI != null){
-                    int choice = questionUI.ask(dto);
-
-                    // cancel → לא לענות, לא לשנות תור, לא לגבות עלות
-                    if (choice < 0){
-                        return false;
-                    }
-                    right  = (choice == q.correctIndex());
-                    qLevel = q.level();
-                } else {
-                    // אין UI – נניח תשובה נכונה
-                    right  = true;
-                    qLevel = q.level();
-                }
-            }
-
-            // *** עלות הפעלת שאלה לפי רמת משחק ***
             int cost = activationCost(match.level());
+
+            boolean ok = (questionUI == null) || questionUI.confirmActivation("Question", cost);
+            if (!ok) return false;
+
+            // pay cost first
             match.addPoints(-cost);
 
-            // אפקט מלא לפי הטבלה
-            DifficultyLevel diff = match.level();
-            QuestionEffect eff = computeQuestionEffect(diff, qLevel, right);
+            Question q = sys.drawRandomQuestion();
+            boolean right;
+            QuestionLevel qLevel;
+            int correctIdxForMsg = -1;
+
+            if (q == null){
+                right = true;
+                qLevel = QuestionLevel.EASY;
+            } else {
+                lastQuestionCorrectIndex = q.correctIndex();
+                correctIdxForMsg = q.correctIndex();
+
+                QuestionDTO dto = new QuestionDTO(q.id(), q.text(), q.options(), q.level().name());
+                int choice = (questionUI != null) ? questionUI.ask(dto) : 0;
+
+                // no cancel in dialog now -> but keep safe
+                if (choice < 0) choice = 0;
+
+                right = (choice == q.correctIndex());
+                qLevel = q.level();
+            }
+
+            QuestionEffect eff = computeQuestionEffect(match.level(), qLevel, right);
 
             match.addPoints(eff.pointsDelta);
             match.addLives (eff.livesDelta);
 
-            if (eff.revealMineBonus){
-                revealRandomMineBonus(b, playerIdx);
+            if (eff.revealMineBonus) revealRandomMineBonus(b);
+            if (eff.revealAreaBonus) revealRandom3x3Bonus(b, playerIdx);
+
+            String base = right ? "✅ Correct!" : "❌ Wrong!";
+            if (!right && correctIdxForMsg >= 0){
+                base += " Correct: " + (char)('A' + correctIdxForMsg);
             }
-            if (eff.revealAreaBonus){
-                revealRandom3x3Bonus(b, playerIdx);
-            }
+            setLastInteraction(cost, eff.pointsDelta, eff.livesDelta, base);
 
             pend.remove(qKey);
 
-        // ----- Surprise cell -----
-        } else if (pend.contains(sKey) && cell instanceof SurpriseCell sc){
-            if (sc.isRevealed() && !sc.wasOperated()){
-
-                sc.operate();
-
-                // עלות הפעלת Surprise
-                int cost = activationCost(match.level());
-                match.addPoints(-cost);
-
-                boolean good = rnd.nextBoolean();
-                SurpriseEffect se = computeSurpriseEffect(match.level(), good);
-
-                match.addPoints(se.pointsDelta);
-                match.addLives (se.livesDelta);
-
-                lastSurpriseMessage = good
-                        ? "🎁 Good surprise! +" + se.pointsDelta + " pts, +" + se.livesDelta + " ❤"
-                        : "🎁 Bad surprise! "  + se.pointsDelta + " pts, "  + se.livesDelta + " ❤";
+            match.checkFinish();
+            if (match.isFinished()) {
+                finishAndClose();
+                publish();
+                return true;
             }
-            pend.remove(sKey);
 
-        } else {
-            return false;
-        }
-
-        match.checkFinish();
-        if (match.isFinished()) {
-            finishAndClose();
+            endTurn();
+            publish();
             return true;
         }
 
-        endTurn();
-        return true;
+        // ---------- Surprise ----------
+        if (pend.contains(sKey) && cell instanceof SurpriseCell sc){
+
+            setLastInteraction(0,0,0,null);
+
+            if (!sc.isRevealed() || sc.wasOperated()){
+                pend.remove(sKey);
+                publish();
+                return false;
+            }
+
+            int cost = activationCost(match.level());
+            boolean ok = (questionUI == null) || questionUI.confirmActivation("Surprise", cost);
+            if (!ok) return false;
+
+            // pay cost first
+            match.addPoints(-cost);
+
+            sc.operate();
+
+            boolean good = rnd.nextBoolean();
+            SurpriseEffect se = computeSurpriseEffect(match.level(), good);
+
+            match.addPoints(se.pointsDelta);
+            match.addLives (se.livesDelta);
+
+            String base = good ? "🎁 Good surprise!" : "🎁 Bad surprise!";
+            setLastInteraction(cost, se.pointsDelta, se.livesDelta, base);
+
+            pend.remove(sKey);
+
+            match.checkFinish();
+            if (match.isFinished()) {
+                finishAndClose();
+                publish();
+                return true;
+            }
+
+            endTurn();
+            publish();
+            return true;
+        }
+
+        return false;
     }
 
-
+    /**
+     * Flag rules requested:
+     * ✅ placing a flag ends turn
+     * ✅ removing a flag does NOT end turn (so you can correct it)
+     * ✅ always publish (so UI never gets stuck)
+     */
     public void toggleFlag(int playerIndex,int row,int col){
         if (playerIndex != match.activeIndex()) return;
 
         Board b = (playerIndex==0)? match.board1() : match.board2();
         Cell  cell = b.cell(row,col);
+
         boolean before = cell.isFlagged();
-
         cell.toggleFlag();
+        boolean after = cell.isFlagged();
 
-        if (before != cell.isFlagged())
-            applyFlagScoring(cell, cell.isFlagged());
+        if (before != after) {
+            applyFlagScoring(cell, after);
+        }
 
         match.checkFinish();
         if (match.isFinished()) {
             finishAndClose();
+            publish();
             return;
         }
 
-        endTurn();
+        // ✅ לפי הדרישה: דגל לא מסיים תור (לא משנה אם שמתי/הסרתי)
+        publish();
     }
+
 
     // ======================== Flood ========================
 
@@ -301,21 +402,11 @@ public class MatchController {
             cell.reveal();
             applyRevealScoring(cell);
 
-            if (cell instanceof QuestionCell){
-                addPending(playerIdx,new Key(r,c,true));
-            }
+            if (cell instanceof QuestionCell) addPending(playerIdx,new Key(r,c,true));
+            if (cell instanceof SurpriseCell) addPending(playerIdx,new Key(r,c,false));
 
-            if (cell instanceof SurpriseCell){
-                addPending(playerIdx,new Key(r,c,false));
-            }
-
-            if (cell instanceof NumberCell) {
-                continue;
-            }
-
-            if (cell instanceof MineCell) {
-                continue;
-            }
+            if (cell instanceof NumberCell) continue;
+            if (cell instanceof MineCell)   continue;
 
             for(int k=0;k<8;k++){
                 int nr = r + DR[k], nc = c + DC[k];
@@ -328,27 +419,21 @@ public class MatchController {
         }
     }
 
-
     // ======================== Finish ========================
 
     private void finishAndClose(){
+        frozenElapsedSeconds = getElapsedSeconds();
+
         boolean won = match.lives() > 0;
 
-        // המרת כל הלבבות לנקודות לפי עלות חיים
         match.convertLivesToPoints();
-
-        // לחשוף את כל התאים בשני הלוחות
         revealAllBoards();
 
-        // יצירת רשומת משחק ושמירה בהיסטוריה
         SysData.GameRecord rec = match.toRecord(won);
         sys.addRecord(rec);
 
-        // שומרים את הרשומה כדי שה-GameView יפתח EndView אחרי 10 שניות
         lastRecord = rec;
     }
-
-
 
     private void revealAllBoards(){
         Board b1 = match.board1();
@@ -366,12 +451,6 @@ public class MatchController {
 
     // ======================== Helpers ========================
 
-    public String consumeLastSurpriseMessage(){
-        String s = lastSurpriseMessage;
-        lastSurpriseMessage = null;
-        return s;
-    }
-
     private void endTurn(){
         match.endTurn();
     }
@@ -384,7 +463,6 @@ public class MatchController {
         pendSet(idx).add(k);
     }
 
-    /** Basic scoring for reveal (לא קשור לטבלת השאלות) */
     private void applyRevealScoring(Cell cell){
         switch(cell.type()){
             case MINE -> match.addLives(-1);
@@ -399,9 +477,8 @@ public class MatchController {
         }
     }
 
-    // ======================== Question & Surprise scoring ========================
+    // ======================== Effects ========================
 
-    /** עלות הפעלת שאלה / הפתעה לפי רמת קושי */
     private int activationCost(DifficultyLevel diff){
         return switch (diff){
             case EASY   -> 5;
@@ -410,142 +487,87 @@ public class MatchController {
         };
     }
 
-    private QuestionEffect computeQuestionEffect(DifficultyLevel diff,
-                                                 QuestionLevel ql,
-                                                 boolean right){
+    private QuestionEffect computeQuestionEffect(DifficultyLevel diff, QuestionLevel ql, boolean right){
         switch (diff){
             case EASY:
                 switch (ql){
                     case EASY:
-                        if (right) {
-                            return new QuestionEffect(+3, +1, false, false);
-                        } else {
-                            boolean punish = rnd.nextBoolean();
-                            return punish
-                                    ? new QuestionEffect(-3, 0, false, false)
-                                    : new QuestionEffect(0, 0, false, false);
-                        }
+                        if (right) return new QuestionEffect(+3, +1, false, false);
+                        boolean punish = rnd.nextBoolean();
+                        return punish ? new QuestionEffect(-3, 0, false, false)
+                                      : new QuestionEffect(0, 0, false, false);
 
                     case MEDIUM:
-                        if (right) {
-                            return new QuestionEffect(+6, 0, true, false);
-                        } else {
-                            boolean punish = rnd.nextBoolean();
-                            return punish
-                                    ? new QuestionEffect(-6, 0, false, false)
-                                    : new QuestionEffect(0, 0, false, false);
-                        }
+                        if (right) return new QuestionEffect(+6, 0, true, false);
+                        punish = rnd.nextBoolean();
+                        return punish ? new QuestionEffect(-6, 0, false, false)
+                                      : new QuestionEffect(0, 0, false, false);
 
                     case HARD:
-                        if (right) {
-                            return new QuestionEffect(+10, 0, false, true);
-                        } else {
-                            return new QuestionEffect(-10, 0, false, false);
-                        }
+                        if (right) return new QuestionEffect(+10, 0, false, true);
+                        return new QuestionEffect(-10, 0, false, false);
 
                     case MASTER:
-                        if (right) {
-                            return new QuestionEffect(+15, +2, false, false);
-                        } else {
-                            return new QuestionEffect(-15, -1, false, false);
-                        }
+                        if (right) return new QuestionEffect(+15, +2, false, false);
+                        return new QuestionEffect(-15, -1, false, false);
                 }
-                break;
 
             case MEDIUM:
                 switch (ql){
                     case EASY:
-                        if (right) {
-                            return new QuestionEffect(+8, +1, false, false);
-                        } else {
-                            return new QuestionEffect(-8, 0, false, false);
-                        }
+                        if (right) return new QuestionEffect(+8, +1, false, false);
+                        return new QuestionEffect(-8, 0, false, false);
 
                     case MEDIUM:
-                        if (right) {
-                            return new QuestionEffect(+10, +1, false, false);
-                        } else {
-                            boolean punish = rnd.nextBoolean();
-                            if (punish){
-                                return new QuestionEffect(-10, -1, false, false);
-                            } else {
-                                return new QuestionEffect(0, 0, false, false);
-                            }
-                        }
+                        if (right) return new QuestionEffect(+10, +1, false, false);
+                        boolean punish = rnd.nextBoolean();
+                        return punish ? new QuestionEffect(-10, -1, false, false)
+                                      : new QuestionEffect(0, 0, false, false);
 
                     case HARD:
-                        if (right) {
-                            return new QuestionEffect(+15, +1, false, false);
-                        } else {
-                            return new QuestionEffect(-15, -1, false, false);
-                        }
+                        if (right) return new QuestionEffect(+15, +1, false, false);
+                        return new QuestionEffect(-15, -1, false, false);
 
                     case MASTER:
-                        if (right) {
-                            return new QuestionEffect(+20, +2, false, false);
-                        } else {
-                            boolean oneOrTwo = rnd.nextBoolean();
-                            return new QuestionEffect(-20, oneOrTwo ? -1 : -2, false, false);
-                        }
+                        if (right) return new QuestionEffect(+20, +2, false, false);
+                        boolean oneOrTwo = rnd.nextBoolean();
+                        return new QuestionEffect(-20, oneOrTwo ? -1 : -2, false, false);
                 }
-                break;
 
             case HARD:
                 switch (ql){
                     case EASY:
-                        if (right) {
-                            return new QuestionEffect(+10, +1, false, false);
-                        } else {
-                            return new QuestionEffect(-10, -1, false, false);
-                        }
+                        if (right) return new QuestionEffect(+10, +1, false, false);
+                        return new QuestionEffect(-10, -1, false, false);
 
                     case MEDIUM:
-                        if (right) {
-                            boolean oneOrTwo = rnd.nextBoolean();
-                            return new QuestionEffect(+15, oneOrTwo ? +1 : +2, false, false);
-                        } else {
-                            boolean oneOrTwo = rnd.nextBoolean();
-                            return new QuestionEffect(-15, oneOrTwo ? -1 : -2, false, false);
-                        }
+                        boolean oneOrTwo = rnd.nextBoolean();
+                        if (right) return new QuestionEffect(+15, oneOrTwo ? +1 : +2, false, false);
+                        return new QuestionEffect(-15, oneOrTwo ? -1 : -2, false, false);
 
                     case HARD:
-                        if (right) {
-                            return new QuestionEffect(+20, +2, false, false);
-                        } else {
-                            return new QuestionEffect(-20, -2, false, false);
-                        }
+                        if (right) return new QuestionEffect(+20, +2, false, false);
+                        return new QuestionEffect(-20, -2, false, false);
 
                     case MASTER:
-                        if (right) {
-                            return new QuestionEffect(+40, +3, false, false);
-                        } else {
-                            return new QuestionEffect(-40, -3, false, false);
-                        }
+                        if (right) return new QuestionEffect(+40, +3, false, false);
+                        return new QuestionEffect(-40, -3, false, false);
                 }
-                break;
         }
-
         return new QuestionEffect(0,0,false,false);
     }
 
-    /** אפקט של Surprise לפי רמת קושי והאם טוב/רע */
     private SurpriseEffect computeSurpriseEffect(DifficultyLevel diff, boolean good){
         return switch (diff){
-            case EASY ->  good
-                    ? new SurpriseEffect(+8, +1)
-                    : new SurpriseEffect(-8, -1);
-            case MEDIUM -> good
-                    ? new SurpriseEffect(+12, +1)
-                    : new SurpriseEffect(-12, -1);
-            case HARD ->  good
-                    ? new SurpriseEffect(+16, +1)
-                    : new SurpriseEffect(-16, -1);
+            case EASY   -> good ? new SurpriseEffect(+8, +1)   : new SurpriseEffect(-8, -1);
+            case MEDIUM -> good ? new SurpriseEffect(+12, +1)  : new SurpriseEffect(-12, -1);
+            case HARD   -> good ? new SurpriseEffect(+16, +1)  : new SurpriseEffect(-16, -1);
         };
     }
 
-    // ======================== Bonus reveal helpers ========================
+    // ======================== Bonus reveals ========================
 
-    private void revealRandomMineBonus(Board b, int playerIdx){
+    private void revealRandomMineBonus(Board b){
         List<int[]> mines = new ArrayList<>();
         for (int r=0; r<b.rows(); r++){
             for (int c=0; c<b.cols(); c++){
@@ -558,10 +580,7 @@ public class MatchController {
         if (mines.isEmpty()) return;
 
         int[] chosen = mines.get(rnd.nextInt(mines.size()));
-        Cell mine = b.cell(chosen[0], chosen[1]);
-        if (!mine.isRevealed()){
-            mine.reveal();
-        }
+        b.cell(chosen[0], chosen[1]).reveal();
     }
 
     private void revealRandom3x3Bonus(Board b, int playerIdx){
@@ -600,7 +619,7 @@ public class MatchController {
         }
     }
 
-    // --------- helpers used by the view for "used" question/surprise ---------
+    // --------- used checks (view needs these) ---------
 
     public boolean isQuestionUsed(int playerIdx, int row, int col){
         Board b = (playerIdx==0)? match.board1() : match.board2();
@@ -611,16 +630,6 @@ public class MatchController {
         Key qKey = new Key(row,col,true);
 
         return cell.isRevealed() && !pend.contains(qKey);
-    }
-    
-
-    public void addMatchListener(MatchListener l){
-        match.addListener(l);
-        l.onMatchChanged(match.snapshot()); // push initial state immediately
-    }
-
-    public void removeMatchListener(MatchListener l){
-        match.removeListener(l);
     }
 
     public boolean isSurpriseUsed(int playerIdx, int row, int col){
@@ -633,5 +642,4 @@ public class MatchController {
 
         return sc.wasOperated() || (cell.isRevealed() && !pend.contains(sKey));
     }
-
 }

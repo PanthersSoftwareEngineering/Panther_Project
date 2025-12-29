@@ -3,77 +3,65 @@ package view;
 import javax.swing.*;
 import java.awt.*;
 
-public class Toast extends JWindow {
+public class Toast {
 
-    // ✅ שליטה מרכזית על גודל/זמן
-    private static final int DEFAULT_DURATION_MS = 6000; // היה 2000
-    private static final int FONT_SIZE = 26;             // היה 18
-    private static final int ARC = 26;                   // פינות עגולות
-    private static final int MIN_WIDTH = 520;            // שלא יצא קטן מדי
+    private static JWindow window;
+    private static Timer hideTimer;
 
-    public Toast(JFrame owner, String message, int durationMs) {
-        super(owner);
+    public static void show(JFrame owner, String message) {
+        // ✅ replace previous toast immediately
+        if (hideTimer != null) {
+            hideTimer.stop();
+            hideTimer = null;
+        }
+        if (window != null) {
+            window.setVisible(false);
+            window.dispose();
+            window = null;
+        }
 
-        JLabel lbl = new JLabel(message, SwingConstants.CENTER);
-        lbl.setForeground(UIStyles.GOLD_TEXT);
-        lbl.setFont(new Font("SansSerif", Font.BOLD, FONT_SIZE));
-
-        // יותר "גדול" ונעים
-        lbl.setBorder(UIStyles.pad(18, 34, 18, 34)); // היה 12,20
+        window = new JWindow(owner);
 
         JPanel panel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g); // חשוב
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                // רקע כהה עם שקיפות
-                g2.setColor(new Color(0, 0, 0, 200));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), ARC, ARC);
-
-                // מסגרת זהובה עדינה
-                g2.setStroke(new BasicStroke(3f));
-                g2.setColor(new Color(255, 190, 60, 220));
-                g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, ARC, ARC);
-
+                g2.setColor(new Color(0, 0, 0, 210));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
                 g2.dispose();
             }
         };
-
         panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
         panel.setLayout(new BorderLayout());
+
+        JLabel lbl = new JLabel(message);
+        lbl.setForeground(UIStyles.GOLD_TEXT);
+        lbl.setFont(UIStyles.HUD_FONT);
         panel.add(lbl, BorderLayout.CENTER);
 
-        setContentPane(panel);
-        pack();
+        window.setBackground(new Color(0, 0, 0, 0));
+        window.setContentPane(panel);
+        window.pack();
 
-        // ✅ אוכפים רוחב מינימלי כדי שיראה "גדול"
-        if (getWidth() < MIN_WIDTH) {
-            setSize(MIN_WIDTH, getHeight());
-        }
-
-        // מיקום – מרכז המסך מעל המשחק (אפשר להוריד/להעלות עם /5)
         Point p = owner.getLocationOnScreen();
-        int x = p.x + (owner.getWidth() - getWidth()) / 2;
-        int y = p.y + owner.getHeight() / 5;
-        setLocation(x, y);
+        int x = p.x + (owner.getWidth() - window.getWidth()) / 2;
+        int y = p.y + owner.getHeight() - window.getHeight() - 60;
+        window.setLocation(x, y);
 
-        setAlwaysOnTop(true);
-        setVisible(true);
+        window.setAlwaysOnTop(true);
+        window.setVisible(true);
 
-        // ✅ סגירה אוטומטית (חד-פעמי)
-        Timer t = new Timer(durationMs, e -> dispose());
-        t.setRepeats(false);
-        t.start();
-    }
-
-    public static void show(JFrame owner, String msg) {
-        new Toast(owner, msg, DEFAULT_DURATION_MS);
-    }
-
-    // אופציונלי: אם בא לך לשלוט בכל קריאה
-    public static void show(JFrame owner, String msg, int durationMs) {
-        new Toast(owner, msg, durationMs);
+        hideTimer = new Timer(2200, e -> {
+            if (window != null) {
+                window.setVisible(false);
+                window.dispose();
+                window = null;
+            }
+            hideTimer = null;
+        });
+        hideTimer.setRepeats(false);
+        hideTimer.start();
     }
 }

@@ -1,17 +1,29 @@
+// =======================
+// view/QuestionDialog.java
+// =======================
 package view;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 public class QuestionDialog extends JDialog {
 
-    private int answer = -1; // ברירת מחדל = Cancel
+    private int answer = -1;          // will become 0..n-1 (no cancel)
+    private boolean locked = false;
 
-    public QuestionDialog(JFrame owner, QuestionDTO q) {
-        super(owner, "Question", true);
+    private final List<JButton> optionButtons = new ArrayList<>();
+    private final int correctIndex;
+
+    public QuestionDialog(Window owner, QuestionDTO q, int correctIndex) {
+        super(owner, "Question", ModalityType.APPLICATION_MODAL);
         setUndecorated(true);
+
+        this.correctIndex = correctIndex;
+
+        // ✅ no closing by X / ESC
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 
         // ================= Root =================
         JPanel root = new JPanel() {
@@ -40,9 +52,7 @@ public class QuestionDialog extends JDialog {
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
         // ================= Question text =================
-        JLabel text = new JLabel(
-                "<html><div style='width:480px'>" + q.text() + "</div></html>"
-        );
+        JLabel text = new JLabel("<html><div style='width:480px'>" + q.text() + "</div></html>");
         text.setForeground(UIStyles.GOLD_TEXT);
         text.setFont(new Font("Segoe UI", Font.PLAIN, 18));
 
@@ -59,61 +69,62 @@ public class QuestionDialog extends JDialog {
             btn.setFont(UIStyles.HUD_FONT);
             btn.setForeground(UIStyles.GOLD_TEXT);
             btn.setBackground(new Color(60, 60, 60));
+            btn.setOpaque(true);
 
             btn.setHorizontalAlignment(SwingConstants.LEFT);
-            btn.setHorizontalTextPosition(SwingConstants.LEFT);
             btn.setBorder(BorderFactory.createEmptyBorder(10, 26, 10, 10));
 
-            btn.addActionListener(e -> {
-                answer = idx;
-                dispose();
-            });
+            btn.addActionListener(e -> onPick(idx));
 
+            optionButtons.add(btn);
             answers.add(btn);
         }
-
-        // ================= Cancel button =================
-        BaseGameFrame.RoundedButton cancelBtn =
-                new BaseGameFrame.RoundedButton("Cancel", 200, 56, 20);
-
-        cancelBtn.addActionListener(e -> {
-            answer = -1;
-            dispose();
-        });
-
-        JPanel cancelWrap = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        cancelWrap.setOpaque(false);
-        cancelWrap.add(cancelBtn);
-
-        // ================= Combine bottom =================
-        JPanel bottom = new JPanel();
-        bottom.setOpaque(false);
-        bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-        bottom.add(answers);
-        bottom.add(Box.createVerticalStrut(14));
-        bottom.add(cancelWrap);
 
         // ================= Layout =================
         root.add(title, BorderLayout.NORTH);
         root.add(text, BorderLayout.CENTER);
-        root.add(bottom, BorderLayout.SOUTH);
+        root.add(answers, BorderLayout.SOUTH);
 
         setContentPane(root);
         pack();
         setLocationRelativeTo(owner);
+    }
 
-        // ❌ סגירה עם X = Cancel
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent e) {
-                answer = -1;
+    private void onPick(int idx) {
+        if (locked) return;
+        locked = true;
+
+        answer = idx;
+
+        // disable all
+        for (JButton b : optionButtons) b.setEnabled(false);
+
+        // reveal colors: correct green, others red
+        Color green = new Color(40, 167, 69);
+        Color red   = new Color(220, 53, 69);
+
+        for (int i = 0; i < optionButtons.size(); i++) {
+            JButton b = optionButtons.get(i);
+            if (i == correctIndex) {
+                b.setBackground(green);
+                b.setForeground(Color.WHITE);
+            } else {
+                b.setBackground(red);
+                b.setForeground(Color.WHITE);
             }
+        }
+
+        // ✅ 3 seconds then close
+        Timer t = new Timer(3000, ev -> {
+            ((Timer) ev.getSource()).stop();
+            dispose();
         });
+        t.setRepeats(false);
+        t.start();
     }
 
     public int showDialog() {
         setVisible(true); // modal
-        return answer;
+        return answer;    // always >=0 now
     }
 }
