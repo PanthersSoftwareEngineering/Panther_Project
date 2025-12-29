@@ -1,3 +1,6 @@
+// =======================
+// view/QuestionDialog.java
+// =======================
 package view;
 
 import javax.swing.*;
@@ -7,14 +10,14 @@ import java.util.List;
 
 public class QuestionDialog extends JDialog {
 
-    private int answer = -1;          // will always become 0..n-1 (no cancel)
+    private int answer = -1;          // will become 0..n-1 (no cancel)
     private boolean locked = false;
 
     private final List<JButton> optionButtons = new ArrayList<>();
     private final int correctIndex;
 
-    public QuestionDialog(JFrame owner, QuestionDTO q, int correctIndex) {
-        super(owner, "Question", true);
+    public QuestionDialog(Window owner, QuestionDTO q, int correctIndex) {
+        super(owner, "Question", ModalityType.APPLICATION_MODAL);
         setUndecorated(true);
 
         this.correctIndex = correctIndex;
