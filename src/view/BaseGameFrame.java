@@ -12,16 +12,38 @@ import java.awt.event.ComponentEvent;
  * - Full screen
  * - Not resizable, not draggable
  * - Custom exit confirmation
+ *
+ * UPDATED:
+ * - Uses UIStyles (gold theme) for consistent golden text/borders
+ * - Adds a reusable in-frame popup ("toast") with golden text
  */
 public abstract class BaseGameFrame extends JFrame {
 
     protected final AppController app;
-    private Point fixedLocation;   // to prevent dragging
+
+    // =========================================================
+    //  In-frame popup (toast)
+    // =========================================================
+    private final JLabel popupLabel = new JLabel("", SwingConstants.CENTER);
+    private final JPanel popupPanel = new JPanel(new BorderLayout());
+    private Timer popupTimer;
 
     protected BaseGameFrame(AppController app, String title) {
         super(title);
         this.app = app;
 
+        // --- Changing the Java Coffee Icon to a bomb one ---
+        try {
+            // Load the image
+        	// Set the taskbar and window icon
+            if (GameAssets.GAME_ICON != null) {
+                this.setIconImage(GameAssets.GAME_ICON);
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load game icon: " + e.getMessage());
+            System.out.println("[DEBUG] Game icon is null. Check path in GameAssets.");
+        }
+        
         // --- close behaviour: we decide in confirmExit() ---
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -30,17 +52,8 @@ public abstract class BaseGameFrame extends JFrame {
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
-        fixedLocation = getLocation();
 
-        // prevent dragging (force window back to fixedLocation)
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentMoved(ComponentEvent e) {
-                if (!getLocation().equals(fixedLocation)) {
-                    SwingUtilities.invokeLater(() -> setLocation(fixedLocation));
-                }
-            }
-        });
+        
 
         // when user clicks the OS X/close button
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -49,6 +62,9 @@ public abstract class BaseGameFrame extends JFrame {
                 confirmExit();
             }
         });
+
+        // prepare reusable toast UI (it will be added by installToastLayer())
+        initToastUI();
     }
 
     /** Show the window */
@@ -69,7 +85,7 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     /**
-     *Exit Dialog
+     * Exit Dialog
      * @return true if user clicked "Yes".
      */
     private boolean showStyledExitDialog() {
@@ -80,7 +96,7 @@ public abstract class BaseGameFrame extends JFrame {
 
         JPanel root = new JPanel();
         root.setBackground(new Color(12, 12, 20, 240));
-        root.setBorder(BorderFactory.createLineBorder(new Color(255, 190, 60), 3));
+        root.setBorder(BorderFactory.createLineBorder(UIStyles.GOLD_TEXT, 3));
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         dialog.setContentPane(root);
 
@@ -88,7 +104,7 @@ public abstract class BaseGameFrame extends JFrame {
 
         JLabel msg = new JLabel("Are you sure you want to exit the game?");
         msg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        msg.setForeground(Color.WHITE);
+        msg.setForeground(UIStyles.GOLD_TEXT);
         msg.setFont(new Font("Segoe UI", Font.BOLD, 20));
         root.add(msg);
 
@@ -129,20 +145,128 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     // =========================================================
+    //  Reusable in-frame toast (golden popup message)
+    // =========================================================
+
+    /**
+     * IMPORTANT: Call this once in each concrete frame AFTER you setContentPane(...)
+     * Example (in GameViewTwoBoards constructor):
+     *   setContentPane(bgPanel);
+     *   installToastLayer();
+     */
+    protected final void installToastLayer() {
+        // Wrap current content so we can overlay the popup above it
+        Container current = getContentPane();
+
+        // avoid double-install
+        if (current instanceof JLayeredPane) return;
+
+        JLayeredPane layered = new JLayeredPane();
+        layered.setLayout(null);
+
+        // content container
+        JPanel contentHolder = new JPanel(new BorderLayout());
+        contentHolder.setOpaque(false);
+        contentHolder.add(current, BorderLayout.CENTER);
+
+        // size everything on resize
+        layered.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                int w = layered.getWidth();
+                int h = layered.getHeight();
+
+                contentHolder.setBounds(0, 0, w, h);
+
+                // popup centered near top
+                int pw = Math.min(760, (int) (w * 0.70));
+                int ph = 70;
+                int px = (w - pw) / 2;
+                int py = Math.max(30, h / 8);
+
+                popupPanel.setBounds(px, py, pw, ph);
+                popupPanel.revalidate();
+                popupPanel.repaint();
+            }
+        });
+
+        layered.add(contentHolder, Integer.valueOf(0));
+        layered.add(popupPanel, Integer.valueOf(200));
+
+        setContentPane(layered);
+
+        // force initial layout sizing
+        SwingUtilities.invokeLater(() -> {
+            layered.setSize(getSize());
+            layered.dispatchEvent(new ComponentEvent(layered, ComponentEvent.COMPONENT_RESIZED));
+        });
+    }
+
+    /** Show a golden popup message inside the same frame (non-blocking). */
+    protected final void showToast(String message) {
+        showToast(message, 2000);
+    }
+
+    /** Show a golden popup message inside the same frame (non-blocking). */
+    protected final void showToast(String message, int durationMs) {
+        popupLabel.setText(message);
+        popupPanel.setVisible(true);
+
+        if (popupTimer != null) popupTimer.stop();
+        popupTimer = new Timer(durationMs, e -> popupPanel.setVisible(false));
+        popupTimer.setRepeats(false);
+        popupTimer.start();
+    }
+
+    private void initToastUI() {
+        popupLabel.setForeground(UIStyles.GOLD_TEXT);
+        popupLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        popupLabel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+
+        popupPanel.setOpaque(false);
+        popupPanel.setVisible(false);
+
+        JPanel bubble = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // dark translucent bubble
+                g2.setColor(new Color(0, 0, 0, 185));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 22, 22);
+
+                // gold border
+                g2.setStroke(new BasicStroke(3f));
+                g2.setColor(new Color(UIStyles.GOLD_TEXT.getRed(), UIStyles.GOLD_TEXT.getGreen(), UIStyles.GOLD_TEXT.getBlue(), 200));
+                g2.drawRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 22, 22);
+
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        bubble.setOpaque(false);
+        bubble.add(popupLabel, BorderLayout.CENTER);
+
+        popupPanel.removeAll();
+        popupPanel.add(bubble, BorderLayout.CENTER);
+    }
+
+    // =========================================================
     //  Reusable rounded button style
     // =========================================================
-    protected static class RoundedButton extends JButton {
+    public static class RoundedButton extends JButton {
 
         private final Color baseFill  = new Color(20, 24, 32, 235);
         private final Color hoverFill = new Color(40, 44, 54, 245);
-        private final Color borderClr = new Color(255, 190, 60);
+        private final Color borderClr = UIStyles.GOLD_TEXT;
         private final int radius = 65;
 
         public RoundedButton(String text, int width, int height, int fontSize) {
             super(text);
 
             setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-            setForeground(Color.WHITE);
+            setForeground(UIStyles.GOLD_TEXT);
 
             setFocusPainted(false);
             setContentAreaFilled(false);

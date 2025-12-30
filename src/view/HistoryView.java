@@ -52,7 +52,7 @@ public class HistoryView extends BaseGameFrame {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
         // Top spacing (keeps content away from top edge)
-        mainPanel.add(Box.createVerticalStrut(40));
+        mainPanel.add(Box.createVerticalStrut(70));
 
         // Title label (text is transparent because the title is embedded in the background image)
         JLabel title = new JLabel("Game History");

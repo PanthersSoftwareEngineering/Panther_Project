@@ -1,8 +1,15 @@
 package model;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 /**
  * Represents a single match between two players.
  * Holds the boards, scores, lives, timing information, and difficulty.
+ *
+ * Observer pattern (Subject):
+ * - Match is the Subject
+ * - Views register as MatchListener and receive MatchSnapshot updates
  */
 public class Match {
     /** First player. */
@@ -40,6 +47,55 @@ public class Match {
     /** Maximum number of lives during the match. */
     private static final int MAX_LIVES = 10;
 
+    // ========= Observer infrastructure =========
+
+    private final List<MatchListener> listeners = new CopyOnWriteArrayList<>();
+
+    public void addListener(MatchListener l){
+        if (l != null) listeners.add(l);
+    }
+
+    public void removeListener(MatchListener l){
+        listeners.remove(l);
+    }
+
+    private void notifyListeners(){
+        MatchSnapshot s = snapshot();
+        for (MatchListener l : listeners){
+            l.onMatchChanged(s);
+        }
+    }
+
+    /**
+     * Build a snapshot for observers.
+     * Uses current cell.symbol() rendering to keep UI decoupled.
+     */
+    public MatchSnapshot snapshot(){
+        return new MatchSnapshot(
+                p1.name(),
+                p2.name(),
+                level,
+                lives,
+                points,
+                active,
+                elapsedSeconds(),
+                isFinished(),
+                symbolsOfBoard(b1),
+                symbolsOfBoard(b2)
+        );
+    }
+
+    private String[][] symbolsOfBoard(Board b){
+        String[][] g = new String[b.rows()][b.cols()];
+        for (int r = 0; r < b.rows(); r++){
+            for (int c = 0; c < b.cols(); c++){
+                String s = b.cell(r,c).symbol();
+                g[r][c] = (s == null || s.isEmpty()) ? "·" : s;
+            }
+        }
+        return g;
+    }
+
     /**
      * Creates a new match between two players at the specified difficulty.
      * Initializes the boards and starting lives based on DifficultyConfig.
@@ -75,7 +131,10 @@ public class Match {
     /**
      * Switches the active player.
      */
-    public void endTurn(){ active = 1 - active; }
+    public void endTurn(){
+        active = 1 - active;
+        notifyListeners();
+    }
 
     public DifficultyLevel level(){ return level; }
 
@@ -104,6 +163,7 @@ public class Match {
         // הורדת חיים
         if (delta < 0){
             lives = Math.max(0, lives + delta);
+            notifyListeners();
             return;
         }
 
@@ -118,6 +178,8 @@ public class Match {
             int lv = lifeValue();
             points += overflow * lv;
         }
+
+        notifyListeners();
     }
 
     /** המרת כל החיים שנותרו לנקודות בסיום המשחק */
@@ -126,6 +188,7 @@ public class Match {
         int lv = lifeValue();
         points += lives * lv;
         lives = 0;
+        notifyListeners();
     }
 
     /**
@@ -133,6 +196,7 @@ public class Match {
      */
     public void addPoints(int d){
         points += d;
+        notifyListeners();
     }
 
     /**
@@ -161,24 +225,31 @@ public class Match {
      *      • all mines are revealed.
      */
     public void checkFinish(){
+        boolean before = this.finished;
+
         // 1. נגמרו חיים
         if (lives == 0){
             finished = true;
-            return;
+        } else {
+            // 2. אחד הלוחות נפתר (כל התאים הבטוחים נחשפו)
+            // (השארת הקוד שלך כתגובה - לא מוחק)
+            /**if (boardSolved(b1) || boardSolved(b2)){
+                finished = true;
+                return;
+            }*/
+
+            // 3. בכל מוקש בלוח 1 או 2: או דגל או חשוף
+            if (allMinesHandled(b1) || allMinesHandled(b2)){
+                finished = true;
+            }
         }
 
-        // 2. אחד הלוחות נפתר (כל התאים הבטוחים נחשפו)
-        /**if (boardSolved(b1) || boardSolved(b2)){
-            finished = true;
-            return;
-        }*/
-
-        // 3. בכל מוקש בלוח 1 או 2: או דגל או חשוף
-        if (allMinesHandled(b1) || allMinesHandled(b2)){
-            finished = true;
+        // אם מצב הסיום השתנה → נעדכן listeners
+        // וגם אם finished כבר true, עדיין ייתכן שתרצה עדכון (לא חובה).
+        if (before != this.finished || this.finished){
+            notifyListeners();
         }
     }
-
 
     /**
      * Checks whether a board is solved: every non-mine cell is revealed.
@@ -194,8 +265,8 @@ public class Match {
         return true;
     }
 
-    /** 
-     * מחזירה true אם כל תאי המוקש בלוח 
+    /**
+     * מחזירה true אם כל תאי המוקש בלוח
      * או מסומנים בדגל או חשופים.
      */
     private boolean allMinesHandled(Board b){
@@ -212,7 +283,6 @@ public class Match {
         }
         return true;
     }
-
 
     /**
      * Creates a GameRecord snapshot from this match for storing in history.

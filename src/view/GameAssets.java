@@ -9,6 +9,33 @@ import java.net.URL;
 // Here we will save and pre-upload all pictures and gifs so the system will be faster
 public final class GameAssets {
 
+	public static final Image GAME_ICON = loadImage("assets/Icon/bomb2.png");
+
+	private static Image loadImage(String path) {
+	    try {
+	        // Try loading as Resource first
+	        java.net.URL imgURL = GameAssets.class.getResource(path);
+	        if (imgURL != null) {
+	            return new ImageIcon(imgURL).getImage();
+	        }
+
+	        // If not found as resource, try loading directly from filesystem
+	        // We remove the leading slash if it exists for filesystem check
+	        String fsPath = path.startsWith("/") ? path.substring(1) : path;
+	        java.io.File file = new java.io.File(fsPath);
+	        
+	        if (file.exists()) {
+	            return new ImageIcon(file.getAbsolutePath()).getImage();
+	        } else {
+	            System.err.println("[DEBUG] File NOT FOUND in Resource or Filesystem: " + fsPath);
+	            return null;
+	        }
+	    } catch (Exception e) {
+	        System.err.println("[DEBUG] Error loading image: " + e.getMessage());
+	        return null;
+	    }
+	}
+	
     // ---------- Paths ----------
     public static final String MAIN_BG_PATH =
             "assets/MainMenuPics/MainMenu.png";
@@ -38,8 +65,6 @@ public final class GameAssets {
             "assets/EndGamePics/lose3.gif",
             "assets/EndGamePics/lose4.gif"
     };
-
-
 
     // public arrays with the actual pre-loaded GIF icons
     public static final ImageIcon[] WIN_GIFS;

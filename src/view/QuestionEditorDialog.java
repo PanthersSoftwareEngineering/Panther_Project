@@ -4,15 +4,14 @@ import model.Question;
 import model.QuestionLevel;
 
 import javax.swing.*;
-import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A custom styled modal dialog for adding or editing a single Question object.
- * This replaces the standard, unstyled JOptionPane formerly used.
+ * Styled modal dialog for adding/editing questions.
+ * Fully aligned with Navy/Gold theme and BaseGameFrame buttons.
  */
 public class QuestionEditorDialog extends JDialog {
 
@@ -24,23 +23,15 @@ public class QuestionEditorDialog extends JDialog {
     private final JTextArea taText;
     private final JComboBox<String> cbLevel;
     private final JTextField tfOpt1, tfOpt2, tfOpt3, tfOpt4;
-    private final JSpinner spCorrect;
+    private final JComboBox<String> cbCorrect;
 
-    // --- Styling ---
-    private static final Color DARK_BG = new Color(20, 30, 35, 250); // Darker BG
-    private static final Color ACCENT_COLOR = new Color(80, 200, 180); // Turquoise
-    private static final Color TEXT_FIELD_BG = new Color(30, 45, 50);
+    // --- Navy/Gold Styling (Matching History/Main Menu) ---
+    private static final Color DARK_BG = new Color(15, 18, 40, 250);
+    private static final Color GOLD_ACCENT = new Color(255, 190, 60);
+    private static final Color FIELD_BG = new Color(30, 32, 70);
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private static final Font INPUT_FONT = new Font("Segoe UI", Font.PLAIN, 16);
 
-    /**
-     * Shows the modal editor dialog.
-     *
-     * @param owner The parent frame.
-     * @param original The question to edit, or null for add mode.
-     * @param maxExistingId The highest numeric ID found in the system (used for Add mode).
-     * @return The new or updated Question object if saved, or null if canceled.
-     */
     public static Question showDialog(JFrame owner, Question original, int maxExistingId) {
         QuestionEditorDialog dialog = new QuestionEditorDialog(owner, original, maxExistingId);
         dialog.setVisible(true);
@@ -50,264 +41,206 @@ public class QuestionEditorDialog extends JDialog {
     private QuestionEditorDialog(JFrame owner, Question original, int maxExistingId) {
         super(owner, original == null ? "Add Question" : "Edit Question", true);
         this.isAddMode = (original == null);
-        
-        // Use the local RoundedButton defined below
-        RoundedButton btnSave = new RoundedButton("Save", 160, 50, 18);
-        RoundedButton btnCancel = new RoundedButton("Cancel", 160, 50, 18);
-        
-        // --- Setup basic dialog properties ---
+
+        setUndecorated(true);
         setSize(750, 650);
         setLocationRelativeTo(owner);
-        setUndecorated(true);
-        getRootPane().setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 4, true));
 
-        // --- Initialize Components ---
+        // --- Layout Setup ---
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(DARK_BG);
+        root.setBorder(new LineBorder(GOLD_ACCENT, 4, true));
 
-        // ID Field
+        // Header
+        JLabel titleLabel = new JLabel(isAddMode ? "ADD NEW QUESTION" : "EDIT QUESTION");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 30));
+        titleLabel.setForeground(GOLD_ACCENT);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        titleLabel.setBorder(new EmptyBorder(20, 0, 10, 0));
+        root.add(titleLabel, BorderLayout.NORTH);
+
+        // Grid for inputs
+        JPanel inputGrid = new JPanel(new GridBagLayout());
+        inputGrid.setOpaque(false);
+        inputGrid.setBorder(new EmptyBorder(10, 30, 10, 30));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 10, 8, 10);
+
+        // --- Component Initialization ---
         String idValue = isAddMode ? String.valueOf(maxExistingId + 1) : original.id();
         tfId = new JTextField(idValue);
         tfId.setEditable(false);
-        styleInput(tfId, true); 
+        styleInput(tfId);
 
-        // Question Text Area
-        taText = new JTextArea(original == null ? "" : original.text(), 4, 30);
+        taText = new JTextArea(isAddMode ? "" : original.text(), 4, 30);
         taText.setLineWrap(true);
         taText.setWrapStyleWord(true);
-        styleInput(taText, false);
+        styleInput(taText);
         JScrollPane scrollText = new JScrollPane(taText);
-        scrollText.setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 1)); 
-        scrollText.getViewport().setBackground(TEXT_FIELD_BG);
-        
-        // Level Combo Box
+        scrollText.setBorder(new LineBorder(GOLD_ACCENT, 1));
+
         cbLevel = new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD", "MASTER"});
-        if (original != null) cbLevel.setSelectedItem(original.level().name());
-        styleInput(cbLevel, false);
-        
-        // Option Text Fields
+        if (!isAddMode) cbLevel.setSelectedItem(original.level().name());
+        styleInput(cbLevel);
+
         tfOpt1 = createOptionField(original, 0);
         tfOpt2 = createOptionField(original, 1);
         tfOpt3 = createOptionField(original, 2);
         tfOpt4 = createOptionField(original, 3);
-        
-        // Correct Index Spinner
-        SpinnerNumberModel snm = new SpinnerNumberModel(
-                original == null ? 0 : original.correctIndex(), 0, 3, 1
-        );
-        spCorrect = new JSpinner(snm);
-        styleInput(spCorrect, false);
 
-        // --- Layout the components ---
-        
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(DARK_BG);
-        root.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        // Create a dropdown with A, B, C, D
+        cbCorrect = new JComboBox<>(new String[]{"A", "B", "C", "D"});
 
-        JLabel titleLabel = new JLabel(original == null ? "ADD NEW QUESTION" : "EDIT QUESTION ID: " + idValue);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        titleLabel.setForeground(ACCENT_COLOR);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        root.add(titleLabel, BorderLayout.NORTH);
-        
-        // Grid for inputs
-        JPanel inputGrid = new JPanel(new GridBagLayout());
-        inputGrid.setOpaque(false);
-        inputGrid.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
-        gbc.insets = new Insets(8, 5, 8, 5); 
+        // If editing, set the current correct answer
+        if (!isAddMode) {
+            cbCorrect.setSelectedIndex(original.correctIndex());
+        }
+        styleInput(cbCorrect);
 
-        // Helper to add label and component
+        // Build UI Rows
         addStyledRow(inputGrid, gbc, "ID (Auto):", tfId, 0, 0, 1);
-        addStyledRow(inputGrid, gbc, "Question Text:", scrollText, 0, 1, 3); 
+        addStyledRow(inputGrid, gbc, "Question Text:", scrollText, 0, 1, 3);
         addStyledRow(inputGrid, gbc, "Level:", cbLevel, 0, 2, 1);
-        addStyledRow(inputGrid, gbc, "Correct Index [0..3]:", spCorrect, 1, 2, 1);
-        
-        gbc.gridwidth = 1; 
-        addStyledRow(inputGrid, gbc, "Option 1:", tfOpt1, 0, 3, 1);
-        addStyledRow(inputGrid, gbc, "Option 2:", tfOpt2, 1, 3, 1);
-        addStyledRow(inputGrid, gbc, "Option 3:", tfOpt3, 0, 4, 1);
-        addStyledRow(inputGrid, gbc, "Option 4:", tfOpt4, 1, 4, 1);
+        addStyledRow(inputGrid, gbc, "Correct (A-D):", cbCorrect, 1, 2, 1);
+        addStyledRow(inputGrid, gbc, "Option 1 (A):", tfOpt1, 0, 3, 1);
+        addStyledRow(inputGrid, gbc, "Option 2 (B):", tfOpt2, 1, 3, 1);
+        addStyledRow(inputGrid, gbc, "Option 3 (C):", tfOpt3, 0, 4, 1);
+        addStyledRow(inputGrid, gbc, "Option 4 (D):", tfOpt4, 1, 4, 1);
 
         root.add(inputGrid, BorderLayout.CENTER);
 
-        // Buttons
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10));
+        // --- Buttons Row (Using BaseGameFrame.RoundedButton) ---
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 20));
         buttonsPanel.setOpaque(false);
+
+        BaseGameFrame.RoundedButton btnSave = new BaseGameFrame.RoundedButton("Save", 180, 55, 20);
+        BaseGameFrame.RoundedButton btnCancel = new BaseGameFrame.RoundedButton("Cancel", 180, 55, 20);
+
+        btnSave.addActionListener(e -> onSave());
+        btnCancel.addActionListener(e -> dispose());
+
         buttonsPanel.add(btnSave);
         buttonsPanel.add(btnCancel);
         root.add(buttonsPanel, BorderLayout.SOUTH);
-        
+
         setContentPane(root);
-        
-        // --- Action Listeners ---
-        btnSave.addActionListener(e -> onSave());
-        btnCancel.addActionListener(e -> onCancel());
     }
-    
-    // --- Helper methods for styling and component creation ---
 
     private JTextField createOptionField(Question original, int index) {
-        String text = (original == null || original.options().size() <= index) 
-                      ? "" 
-                      : original.options().get(index);
+        String text = (original == null || original.options().size() <= index) ? "" : original.options().get(index);
         JTextField tf = new JTextField(text);
-        styleInput(tf, false);
+        styleInput(tf);
         return tf;
     }
-    
-    private void styleInput(JComponent comp, boolean readOnly) {
+
+    private void styleInput(JComponent comp) {
         comp.setFont(INPUT_FONT);
         comp.setForeground(Color.WHITE);
-        comp.setBackground(TEXT_FIELD_BG);
-        
+        comp.setBackground(FIELD_BG);
+
         if (comp instanceof JTextField tf) {
-            tf.setCaretColor(ACCENT_COLOR); 
-            Border border = BorderFactory.createCompoundBorder(
-                new LineBorder(ACCENT_COLOR.darker(), 1, true),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-            );
-            tf.setBorder(readOnly ? BorderFactory.createLineBorder(Color.GRAY.darker()) : border);
-        } else if (comp instanceof JTextArea ta) {
-             ta.setCaretColor(ACCENT_COLOR);
-             ta.setMargin(new Insets(5, 10, 5, 10));
+            tf.setCaretColor(GOLD_ACCENT);
+            tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
         } else if (comp instanceof JComboBox<?> cb) {
-            cb.setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 1, true));
-        } else if (comp instanceof JSpinner sp) {
-            sp.setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 1, true));
-            JFormattedTextField field = ((JSpinner.DefaultEditor) sp.getEditor()).getTextField();
-            field.setHorizontalAlignment(SwingConstants.CENTER);
-            field.setBackground(TEXT_FIELD_BG);
-            field.setForeground(Color.WHITE);
-            field.setCaretColor(ACCENT_COLOR);
+            cb.setBorder(new LineBorder(GOLD_ACCENT, 1));
+            // This ensures the items inside the dropdown look good too
+            cb.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    l.setBackground(isSelected ? GOLD_ACCENT : FIELD_BG);
+                    l.setForeground(isSelected ? Color.BLACK : Color.WHITE);
+                    return l;
+                }
+            });
         }
-    }
     
-    private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component, int gridx, int gridy, int width) {
+    }
+
+    private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component,
+                              int gridx, int gridy, int width) {
         JLabel label = new JLabel(labelText);
         label.setFont(LABEL_FONT);
-        label.setForeground(ACCENT_COLOR);
-        
+        label.setForeground(GOLD_ACCENT);
+
         gbc.gridx = gridx * 2;
         gbc.gridy = gridy;
-        gbc.weightx = 0.0;
         gbc.gridwidth = 1;
+        gbc.weightx = 0.0;
+        gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(8, 10, 8, 5);
         parent.add(label, gbc);
-        
+
         gbc.gridx = gridx * 2 + 1;
         gbc.gridy = gridy;
-        gbc.weightx = 1.0;
         gbc.gridwidth = width;
-        gbc.anchor = GridBagConstraints.EAST;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(8, 0, 8, 15);
         parent.add(component, gbc);
+
+        gbc.gridwidth = 1;
     }
 
-    // --- Action Handlers ---
+    private static String norm(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    /**
+     * Show validation error in the same theme (visible on top of this dialog).
+     */
+    private void showValidationError(String msg) {
+        JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
+        StyledAlertDialog.show(owner, "Input Error", msg, true);
+    }
 
     private void onSave() {
-        // Validation logic
-        String id = tfId.getText().trim();
-        String text = taText.getText().trim();
-        String lvlS = cbLevel.getSelectedItem().toString();
+        String id = tfId.getText();
+        String text = norm(taText.getText());
+
+        String o1 = norm(tfOpt1.getText());
+        String o2 = norm(tfOpt2.getText());
+        String o3 = norm(tfOpt3.getText());
+        String o4 = norm(tfOpt4.getText());
+
+        // --- Validation rules ---
+        if (text.isEmpty()) {
+            showValidationError("Question text cannot be empty.");
+            taText.requestFocusInWindow();
+            return;
+        }
+
+        if (o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
+            showValidationError("All 4 options must be filled (A, B, C, D).");
+            if (o1.isEmpty()) tfOpt1.requestFocusInWindow();
+            else if (o2.isEmpty()) tfOpt2.requestFocusInWindow();
+            else if (o3.isEmpty()) tfOpt3.requestFocusInWindow();
+            else tfOpt4.requestFocusInWindow();
+            return;
+        }
+
+        var opts = List.of(o1, o2, o3, o4);
+        long distinctCount = opts.stream().map(String::toLowerCase).distinct().count();
+        if (distinctCount < 4) {
+            showValidationError("Options must be different from each other.");
+            return;
+        }
+
+        // Get the index (0 for A, 1 for B, etc.)
+        int correctIdx = cbCorrect.getSelectedIndex(); 
+
+        // Build the result object (removed duplicate assignment)
+        this.result = new Question(
+                id,
+                text,
+                opts,
+                correctIdx, // Use the correct variable name here
+                QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
+        );
         
-        int correct;
-        try {
-            correct = (Integer) spCorrect.getValue();
-        } catch (Exception e) {
-            showError("Invalid Correct Index value.");
-            return;
-        }
-
-        String opt1 = tfOpt1.getText().trim();
-        String opt2 = tfOpt2.getText().trim();
-        String opt3 = tfOpt3.getText().trim();
-        String opt4 = tfOpt4.getText().trim();
-
-        if (text.isEmpty() || opt1.isEmpty() || opt2.isEmpty() || opt3.isEmpty() || opt4.isEmpty()) {
-            showError("All fields must be filled: Question Text and all 4 Options.");
-            return;
-        }
-
-        if (correct < 0 || correct > 3) {
-            showError("Correct index must be between 0 and 3.");
-            return;
-        }
-
-        List<String> opts = new ArrayList<>(4);
-        opts.add(opt1); opts.add(opt2); opts.add(opt3); opts.add(opt4);
-
-        QuestionLevel lvl = QuestionLevel.valueOf(lvlS);
-        
-        this.result = new Question(id, text, opts, correct, lvl);
         dispose();
-    }
-
-    private void onCancel() {
-        this.result = null; 
-        dispose();
-    }
-    
-    /** Shows the error message using the project's custom styling */
-    private void showError(String message) {
-    	StyledAlertDialog.show(
-                (JFrame) SwingUtilities.getWindowAncestor(this), // transform the basic class alert to this designed one (owner)
-                "Input Error", 
-                message, 
-                true // isError = true
-            );
-    }
-    
-    // =========================================================
-    // INNER CLASS: RoundedButton (Copied locally for self-containment)
-    // =========================================================
-    public static class RoundedButton extends JButton {
-
-        private final Color baseFill  = new Color(20, 24, 32, 235); 
-        private final Color hoverFill = new Color(40, 44, 54, 245);
-        private final Color borderClr = new Color(80, 200, 180); // Turquoise ACCENT
-        private final int radius = 65;
-
-        public RoundedButton(String text, int width, int height, int fontSize) {
-            super(text);
-
-            setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-            setForeground(Color.WHITE);
-
-            setFocusPainted(false);
-            setContentAreaFilled(false);
-            setBorderPainted(false);
-            setOpaque(false);
-
-            setPreferredSize(new Dimension(width, height));
-            setMaximumSize(new Dimension(width, height));
-            setMinimumSize(new Dimension(width, height));
-
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setHorizontalAlignment(SwingConstants.CENTER);
-            setHorizontalTextPosition(SwingConstants.CENTER);
-            setVerticalTextPosition(SwingConstants.CENTER);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            Color fill = getModel().isRollover() ? hoverFill : baseFill;
-            int w = getWidth();
-            int h = getHeight();
-
-            g2.setColor(fill);
-            g2.fillRoundRect(0, 0, w, h, radius, radius);
-
-            g2.setStroke(new BasicStroke(4f));
-            g2.setColor(borderClr); 
-            g2.drawRoundRect(2, 2, w - 4, h - 4, radius, radius);
-
-            g2.dispose();
-            super.paintComponent(g);
-        }
     }
 }
