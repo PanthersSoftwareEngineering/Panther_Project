@@ -7,13 +7,9 @@ import view.QuestionUI;
 import java.util.*;
 
 /**
- * MatchController
- * ==============
- * Controller for a single match (Singleton).
- *
- * IMPORTANT FIX:
- * We do NOT rely on Match to notify observers.
- * The controller owns a listener list and publishes snapshots after every state change.
+ * Controller for a single match (Singleton)
+ * We do not rely on Match to notify observers
+ * The controller owns a listener list and publishes snapshots after every state change
  */
 public class MatchController {
 
@@ -41,7 +37,7 @@ public class MatchController {
     private SysData.GameRecord lastRecord = null;
     public SysData.GameRecord getLastRecord(){ return lastRecord; }
 
-    // ✅ Controller-managed observers
+    // Controller-managed observers
     private final List<MatchListener> listeners = new ArrayList<>();
 
     private void publish() {
@@ -52,7 +48,7 @@ public class MatchController {
         }
     }
 
-    // ✅ Time runs always (independent of Match implementation)
+    // Time runs always (independent of Match implementation)
     private long matchStartMillis = 0;
     private long frozenElapsedSeconds = -1;
 
@@ -62,11 +58,11 @@ public class MatchController {
         return (System.currentTimeMillis() - matchStartMillis) / 1000;
     }
 
-    // ✅ For QuestionDialog coloring
+    // For QuestionDialog coloring
     private int lastQuestionCorrectIndex = -1;
     public int getLastQuestionCorrectIndex(){ return lastQuestionCorrectIndex; }
 
-    // ✅ Interaction breakdown for Toast
+    // Interaction breakdown for Toast
     private int lastActivationCost = 0;   // positive number (5/8/12)
     private int lastEffectPoints   = 0;
     private int lastEffectLives    = 0;
@@ -226,9 +222,9 @@ public class MatchController {
     }
 
     /**
-     * Tries to interact with a pending Question/SURPRISE cell.
-     * ✅ confirm first, then pay activation cost, then apply effect
-     * ✅ stores lastInteraction fields for the view toast
+     * Tries to interact with a pending Question/SURPRISE cell
+     * confirm first, then pay activation cost, then apply effect
+     * stores lastInteraction fields for the view toast
      */
     public boolean tryInteract(int playerIdx,int row,int col){
         if (playerIdx != match.activeIndex()) return false;
@@ -269,7 +265,6 @@ public class MatchController {
                 QuestionDTO dto = new QuestionDTO(q.id(), q.text(), q.options(), q.level().name());
                 int choice = (questionUI != null) ? questionUI.ask(dto) : 0;
 
-                // no cancel in dialog now -> but keep safe
                 if (choice < 0) choice = 0;
 
                 right = (choice == q.correctIndex());
@@ -352,9 +347,9 @@ public class MatchController {
 
     /**
      * Flag rules requested:
-     * ✅ placing a flag ends turn
-     * ✅ removing a flag does NOT end turn (so you can correct it)
-     * ✅ always publish (so UI never gets stuck)
+     * placing a flag ends turn
+     * removing a flag does not end turn 
+     * always publish (so UI never gets stuck)
      */
     public void toggleFlag(int playerIndex,int row,int col){
         if (playerIndex != match.activeIndex()) return;
@@ -377,7 +372,6 @@ public class MatchController {
             return;
         }
 
-        // ✅ לפי הדרישה: דגל לא מסיים תור (לא משנה אם שמתי/הסרתי)
         publish();
     }
 
@@ -619,7 +613,7 @@ public class MatchController {
         }
     }
 
-    // --------- used checks (view needs these) ---------
+    // --------- used checks ---------
 
     public boolean isQuestionUsed(int playerIdx, int row, int col){
         Board b = (playerIdx==0)? match.board1() : match.board2();

@@ -8,7 +8,7 @@ import java.awt.*;
 
 /**
  * Custom renderer for JTable cells that wraps long text and preserves cell borders.
- * It is now passive and does NOT change row height dynamically (QuestionTable does that).
+ * It is passive and does not change row height dynamically 
  */
 public class WordWrapCellRenderer extends JTextArea implements TableCellRenderer {
 
@@ -48,7 +48,6 @@ public class WordWrapCellRenderer extends JTextArea implements TableCellRenderer
         // Set border to match the navy theme
         setBorder(new LineBorder(new Color(255, 255, 255, 40), 1));
         
-        // IMPORTANT: We do NOT call setRowHeight here. QuestionTable handles that globally.
         return this;
     }
 }

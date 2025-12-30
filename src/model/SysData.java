@@ -21,7 +21,7 @@ public class SysData {
     }
 
     // ============================================================
-    //         DYNAMIC CSV PATHS (WORKS IN JAR + IDE)
+    //         DYNAMIC CSV PATHS
     // ============================================================
 
     private static Path questionsPath() {

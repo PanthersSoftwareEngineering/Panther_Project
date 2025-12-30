@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Styled modal dialog for adding/editing questions.
- * Fully aligned with Navy/Gold theme and BaseGameFrame buttons.
+ * Fully aligned with Navy/Gold theme and BaseGameFrame buttons
  */
 public class QuestionEditorDialog extends JDialog {
 
@@ -144,7 +144,7 @@ public class QuestionEditorDialog extends JDialog {
             tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
         } else if (comp instanceof JComboBox<?> cb) {
             cb.setBorder(new LineBorder(GOLD_ACCENT, 1));
-            // This ensures the items inside the dropdown look good too
+            // ensures the items inside the dropdown look good too
             cb.setRenderer(new DefaultListCellRenderer() {
                 @Override
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -190,7 +190,7 @@ public class QuestionEditorDialog extends JDialog {
     }
 
     /**
-     * Show validation error in the same theme (visible on top of this dialog).
+     * Show validation error in the same theme (visible on top of this dialog)
      */
     private void showValidationError(String msg) {
         JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
@@ -237,7 +237,7 @@ public class QuestionEditorDialog extends JDialog {
                 id,
                 text,
                 opts,
-                correctIdx, // Use the correct variable name here
+                correctIdx,
                 QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
         );
         
