@@ -13,7 +13,7 @@ import model.Question;
 
 /**
  * Management window for all questions. 
- * Fully synced with BaseGameFrame design, Main Menu background, and centered title.
+ * Fully synced with BaseGameFrame design, Main Menu background, and centered title
  */
 public class QuestionManagerView extends BaseGameFrame { 
 
@@ -30,13 +30,13 @@ public class QuestionManagerView extends BaseGameFrame {
         super(AppController.getInstance(), "Question Manager");
         this.controller = controller;
 
-        // ===== 1. Background Setup (Main Menu Background) =====
+        // =====  Background Setup (Main Menu Background) =====
         Image bgImage = GameAssets.MATCH_BACKGROUND; // Switched to MAIN_MENU
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new GridBagLayout());
         setContentPane(bgPanel);
 
-        // ===== 2. Main Content Card =====
+        // =====  Main Content Card =====
         JPanel centerFrame = new JPanel(new BorderLayout(15, 15)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -59,7 +59,7 @@ public class QuestionManagerView extends BaseGameFrame {
         gbc.weighty = 1.0; 
         bgPanel.add(centerFrame, gbc);
 
-        // ===== 3. Top Section (Centered Title and Back Button) =====
+        // ===== Top Section (Centered Title and Back Button) =====
         JPanel top = new JPanel(new BorderLayout(15, 0));
         top.setOpaque(false);
         top.setBorder(BorderFactory.createEmptyBorder(15, 15, 10, 15));
@@ -86,7 +86,7 @@ public class QuestionManagerView extends BaseGameFrame {
 
         centerFrame.add(top, BorderLayout.NORTH);
         
-        // ===== 4. Table Setup =====
+        // ===== Table Setup =====
         model = new QuestionTableModel(controller.list());
         table = new QuestionTable(model); 
         
@@ -106,7 +106,7 @@ public class QuestionManagerView extends BaseGameFrame {
         scrollPane.getViewport().setBackground(TABLE_BG); 
         centerFrame.add(scrollPane, BorderLayout.CENTER);
 
-        // ===== 5. Bottom CRUD Buttons (Using RoundedButton from BaseGameFrame) =====
+        // ===== Bottom CRUD Buttons (Using RoundedButton from BaseGameFrame) =====
         JPanel buttonsRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 15));
         buttonsRow.setOpaque(false); 
 

@@ -3,28 +3,27 @@ package model;
 import java.util.List;
 
 /**
- * Represents a multiple-choice question with 4 options.
- * Used by QuestionCells in the game and managed by SysData.
+ * Represents a multiple-choice question with 4 options
+ * Used by QuestionCells in the game and managed by SysData
  */
 public class Question {
-    /** Unique identifier for the question. */
+    /** Unique identifier for the question */
     private final String id;
 
-    /** Question text shown to the player. */
+    /** Question text shown to the player */
     private final String text;
 
-    /** List of 4 answer options. */
+    /** List of 4 answer options */
     private final List<String> options;
 
-    /** Index of the correct answer in the options list (0–3). */
+    /** Index of the correct answer in the options list (0–3) */
     private final int correctIndex;
 
-    /** Difficulty level of this question. */
+    /** Difficulty level of this question */
     private final QuestionLevel level;
 
     /**
-     * Constructs a new Question object.
-     *
+     * Constructs a new Question object
      * @param id           unique question id
      * @param text         question text
      * @param options      list of 4 possible answers
@@ -57,8 +56,8 @@ public class Question {
     public int correctIndex()     { return correctIndex; }
     public QuestionLevel level()  { return level; }
 
-    /** Returns the correct answer as a letter A–D. */
+    /** Returns the correct answer as a letter A–D */
     public char correctLetter() {
-        return (char) ('A' + correctIndex); // 0→A, 1→B, 2→C, 3→D
+        return (char) ('A' + correctIndex);
     }
 }

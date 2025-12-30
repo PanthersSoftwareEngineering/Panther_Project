@@ -17,7 +17,7 @@ public final class UIStyles {
     // ---------- Colors ----------
     public static final Color HUD_TEXT  = GOLD_TEXT;
 
-    // “chip” badge colors
+    // "chip" badge colors
     public static final Color CHIP_BG_ACTIVE_P1 = new Color(0, 120, 215, 180);  // blue
     public static final Color CHIP_BG_ACTIVE_P2 = new Color(46, 139, 87, 180);  // green
     public static final Color CHIP_TEXT = Color.WHITE;
