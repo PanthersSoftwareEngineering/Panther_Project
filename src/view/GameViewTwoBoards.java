@@ -386,6 +386,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
      */
     private void refreshFromSnapshot(MatchSnapshot s) {
         boolean p1Active = (s.activeIndex() == 0);
+        boolean finished = s.finished();
 
         // Player names in headers
         lblP1.setText(s.p1());
@@ -399,8 +400,9 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         lblDifficulty.setText("Difficulty: " + s.level().name());
 
         // ACTIVE chip visibility and color
-        chipP1Active.setVisible(p1Active);
-        chipP2Active.setVisible(!p1Active);
+        // (Optional but recommended) hide chips when finished
+        chipP1Active.setVisible(!finished && p1Active);
+        chipP2Active.setVisible(!finished && !p1Active);
         chipP1Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P1);
         chipP2Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P2);
 
@@ -444,12 +446,15 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
             }
         }
 
-        // Disable the inactive board to enforce turn-based play
-        setPanelEnabled(board1, p1Active);
-        setPanelEnabled(board2, !p1Active);
+        
+        // During play: disable the inactive board (turn-based)
+        // After finish: enable BOTH boards so revealed colors are not greyed out
+        setPanelEnabled(board1, finished || p1Active);
+        setPanelEnabled(board2, finished || !p1Active);
 
         repaint();
     }
+
 
     /**
      * Recursively enables/disables an entire container and all its children
