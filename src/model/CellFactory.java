@@ -3,8 +3,7 @@ package model;
 public interface CellFactory {
     /**
      * Factory Method:
-     * Create a cell of a required type.
-     *
+     * Create a cell of a required type
      * @param type  requested cell type
      * @param r     row (context)
      * @param c     col (context)

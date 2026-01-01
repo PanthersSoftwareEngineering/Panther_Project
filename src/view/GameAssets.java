@@ -6,7 +6,7 @@ import java.io.File;
 import java.net.URL;
 
 
-// Here we will save and pre-upload all pictures and gifs so the system will be faster
+// Here we save and pre-upload all pictures and gifs so the system will be faster
 public final class GameAssets {
 
 	public static final Image GAME_ICON = loadImage("assets/Icon/bomb2.png");
@@ -70,7 +70,6 @@ public final class GameAssets {
     public static final ImageIcon[] WIN_GIFS;
     public static final ImageIcon[] LOSE_GIFS;
 
-    // size you want on the end screen (change if needed)
     private static final int END_GIF_SIZE = 220;
 
     // static block runs ONCE when GameAssets is first loaded
@@ -139,7 +138,7 @@ public final class GameAssets {
     public static final Image MATCH_BACKGROUND= loadImageOnce(MATCH_BG_PATH);
 
 
-    private GameAssets() { }  // no instances
+    private GameAssets() { }
 
     /**
      * Tries to load an image once.

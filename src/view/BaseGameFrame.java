@@ -12,8 +12,6 @@ import java.awt.event.ComponentEvent;
  * - Full screen
  * - Not resizable, not draggable
  * - Custom exit confirmation
- *
- * UPDATED:
  * - Uses UIStyles (gold theme) for consistent golden text/borders
  * - Adds a reusable in-frame popup ("toast") with golden text
  */
@@ -63,7 +61,7 @@ public abstract class BaseGameFrame extends JFrame {
             }
         });
 
-        // prepare reusable toast UI (it will be added by installToastLayer())
+        // prepare reusable toast UI
         initToastUI();
     }
 
@@ -86,11 +84,11 @@ public abstract class BaseGameFrame extends JFrame {
 
     /**
      * Exit Dialog
-     * @return true if user clicked "Yes".
+     * return true if user clicked "Yes"
      */
     private boolean showStyledExitDialog() {
         JDialog dialog = new JDialog(this, "Confirm Exit", true);
-        dialog.setUndecorated(true);             // we draw our own border
+        dialog.setUndecorated(true);
         dialog.setSize(500, 250);
         dialog.setLocationRelativeTo(this);
 
@@ -148,12 +146,6 @@ public abstract class BaseGameFrame extends JFrame {
     //  Reusable in-frame toast (golden popup message)
     // =========================================================
 
-    /**
-     * IMPORTANT: Call this once in each concrete frame AFTER you setContentPane(...)
-     * Example (in GameViewTwoBoards constructor):
-     *   setContentPane(bgPanel);
-     *   installToastLayer();
-     */
     protected final void installToastLayer() {
         // Wrap current content so we can overlay the popup above it
         Container current = getContentPane();
@@ -202,12 +194,11 @@ public abstract class BaseGameFrame extends JFrame {
         });
     }
 
-    /** Show a golden popup message inside the same frame (non-blocking). */
     protected final void showToast(String message) {
         showToast(message, 2000);
     }
 
-    /** Show a golden popup message inside the same frame (non-blocking). */
+    /** Show a golden popup message inside the same frame (non-blocking) */
     protected final void showToast(String message, int durationMs) {
         popupLabel.setText(message);
         popupPanel.setVisible(true);

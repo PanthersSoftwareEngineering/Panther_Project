@@ -1,14 +1,14 @@
 package model;
 
 /**
- * A cell representing the number of adjacent mines (1..8).
+ * A cell representing the number of adjacent mines (1..8)
  */
 public class NumberCell extends Cell {
-    /** Number of adjacent mines (must be between 1 and 8). */
+    /** Number of adjacent mines (must be between 1 and 8) */
     private final int value;
 
     /**
-     * Creates a new NumberCell with the given value.
+     * Creates a new NumberCell with the given value
      *
      * @param value number of adjacent mines (1..8)
      */
@@ -18,7 +18,7 @@ public class NumberCell extends Cell {
         this.value = value;
     }
 
-    /** @return the numeric value of this cell. */
+    /** return the numeric value of this cell */
     public int value(){ return value; }
 
     @Override

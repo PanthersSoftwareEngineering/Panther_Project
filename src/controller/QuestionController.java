@@ -5,12 +5,12 @@ import model.Question;
 import model.SysData;
 
 /**
- * Question management controller (Singleton).
- * Acts as an MVC layer between UI and SysData.
+ * Question management controller (Singleton)
+ * Acts as an MVC layer between UI and SysData
  */
 public class QuestionController {
 
-    /* Singleton instance field. */
+    /* Singleton instance field */
     private static QuestionController INSTANCE;
 
     /* Singleton accessor */
@@ -44,7 +44,6 @@ public class QuestionController {
     }
 
     /*  Replace existing question (edit) */
- // controller/QuestionController.java
     public void replace(String oldId, Question updated){
         sys.replaceQuestion(oldId, updated);  
     }

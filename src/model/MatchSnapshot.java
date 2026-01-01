@@ -1,8 +1,8 @@
 package model;
 
 /**
- * Immutable snapshot of match state sent to listeners (Views).
- * Keeps UI decoupled from direct access to the live model.
+ * Immutable snapshot of match state sent to listeners (Views)
+ * Keeps UI decoupled from direct access to the live model
  */
 public record MatchSnapshot(
         String p1,

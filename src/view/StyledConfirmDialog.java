@@ -9,7 +9,7 @@ import static view.QuestionManagerView.RoundedButton;
 /**
  * StyledConfirmDialog
  * ===================
- * Two-button modal dialog used when the user must confirm an action.
+ * Two-button modal dialog used when the user must confirm an action
  *
  * Returns:
  * - JOptionPane.OK_OPTION    (confirm)

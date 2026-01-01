@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Simple data-transfer object used by the controller to send
- * question data to the UI without exposing the model class directly.
+ * question data to the UI without exposing the model class directly
  */
 public record QuestionDTO(
         String id,

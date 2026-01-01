@@ -55,7 +55,7 @@ public class Cell_Tests {
 
         int before = m.points();
 
-        mc.reveal(0, 0);   // will call floodReveal → reveal several cells
+        mc.reveal(0, 0);   // will call floodReveal -> reveal several cells
 
         assertTrue(m.points() > before);   // points must increase (>= +1)
      }

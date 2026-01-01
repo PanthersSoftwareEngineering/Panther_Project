@@ -151,6 +151,6 @@ public abstract class AbstractStyledDialog extends JDialog {
 
     // no-op helper (keeps intent explicit)
     private void JPanel_toggleNoScroll() {
-        // dialogs are intentionally short; do not add scroll panes here
+        // dialogs are intentionally short
     }
 }

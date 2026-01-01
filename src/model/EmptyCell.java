@@ -1,8 +1,8 @@
 package model;
 
 /**
- * A cell with no adjacent mines and no special behavior.
- * When revealed it appears as a blank space; when flagged it shows a flag.
+ * A cell with no adjacent mines and no special behavior
+ * When revealed it appears as a blank space; when flagged it shows a flag
  */
 public class EmptyCell extends Cell {
 
