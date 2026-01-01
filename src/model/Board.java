@@ -6,9 +6,8 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Board holds a 2D grid of Cells.
- * This version uses Factory Method via CellFactory,
- * so Board does not "new MineCell()" etc directly.
+ * Board holds a 2D grid of Cells
+ * Uses Factory Method via CellFactory, so Board does not "new MineCell()" etc directly
  */
 public class Board {
 
@@ -21,23 +20,21 @@ public class Board {
 
     // ---------------- Constructors ----------------
 
-    /** Keeps your original API: Board(level) */
+    /** Keeps original API: Board(level) */
     public Board(DifficultyLevel level) {
         this(level, new DefaultCellFactory());
     }
 
-    /** New overload that allows injecting a factory. */
+    /** Overload that allows injecting a factory */
     public Board(DifficultyLevel level, CellFactory factory) {
         this.factory = (factory != null) ? factory : new DefaultCellFactory();
 
-        // ====== IMPORTANT: adapt these getters to your DifficultyConfig names ======
         this.rows = DifficultyConfig.getRows(level);
         this.cols = DifficultyConfig.getCols(level);
 
         int mines     = DifficultyConfig.getMines(level);
         int questions = DifficultyConfig.getQuestionCells(level);
         int surprises = DifficultyConfig.getSurpriseCells(level);
-        // ========================================================================
 
         this.grid = new Cell[rows][cols];
 
@@ -51,8 +48,8 @@ public class Board {
     }
 
     /**
-     * Extra constructor useful for tests (small custom board).
-     * Default = all empty.
+     * Extra constructor useful for tests (small custom board)
+     * Default = all empty
      */
     public Board(int rows, int cols) {
         this(rows, cols, new DefaultCellFactory());
@@ -76,8 +73,7 @@ public class Board {
     }
 
     /**
-     * Optional helper for unit tests.
-     * If you already have setCell in your project - keep one version only.
+     * Optional helper for unit tests
      */
     public void setCell(int r, int c, Cell newCell) {
         grid[r][c] = newCell;
@@ -94,7 +90,7 @@ public class Board {
     }
 
     /**
-     * Place N cells of a given type in random empty positions.
+     * Place N cells of a given type in random empty positions
      */
     private void placeRandom(CellType type, int count) {
         if (count <= 0) return;
@@ -102,7 +98,7 @@ public class Board {
         List<int[]> free = new ArrayList<>();
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                // We treat "EmptyCell" as free spot. (After numbers fill, don't call this.)
+                // We treat "EmptyCell" as free spot
                 if (grid[r][c] instanceof EmptyCell) {
                     free.add(new int[]{r, c});
                 }
@@ -120,8 +116,8 @@ public class Board {
     }
 
     /**
-     * Convert all non-mine / non-question / non-surprise cells into NUMBER-or-EMPTY.
-     * The factory returns EmptyCell when adjacent mines count is 0.
+     * Convert all non-mine / non-question / non-surprise cells into NUMBER-or-EMPTY
+     * The factory returns EmptyCell when adjacent mines count is 0
      */
     private void fillNumbers() {
         for (int r = 0; r < rows; r++) {
@@ -141,8 +137,7 @@ public class Board {
 	 // =====================
 	
 	 /**
-	  * Allows tests to inject a specific cell into the board.
-	  * Should be used ONLY in unit tests.
+	  * Allows tests to inject a specific cell into the board
 	  */
 	 public void setCellForTest(int row, int col, Cell cell) {
 	     if (row < 0 || row >= rows || col < 0 || col >= cols) {

@@ -18,7 +18,7 @@ public class CellButton extends JButton {
 
         setFocusPainted(false);
         setBorderPainted(false);
-        setContentAreaFilled(false); // we paint ourselves
+        setContentAreaFilled(false);
         setOpaque(false);
 
         setFont(new Font("SansSerif", Font.BOLD, 16));
@@ -78,7 +78,7 @@ public class CellButton extends JButton {
         }
 
         // ==========================
-        // 🌟 GLOW EFFECT
+        // GLOW EFFECT
         // ==========================
         if (enabled) {
             Color glow = brighten(fill, hover ? 0.45f : 0.30f);

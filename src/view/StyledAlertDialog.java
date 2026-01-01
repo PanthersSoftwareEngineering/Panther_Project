@@ -9,7 +9,7 @@ import static view.QuestionManagerView.RoundedButton;
 /**
  * StyledAlertDialog
  * =================
- * One-button modal dialog used for errors and user guidance.
+ * One-button modal dialog used for errors and user guidance
  */
 public class StyledAlertDialog extends AbstractStyledDialog {
 

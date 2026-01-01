@@ -12,15 +12,12 @@ import java.awt.event.ComponentEvent;
  * - Full screen
  * - Not resizable, not draggable
  * - Custom exit confirmation
- *
- * UPDATED:
  * - Uses UIStyles (gold theme) for consistent golden text/borders
  * - Adds a reusable in-frame popup ("toast") with golden text
  */
 public abstract class BaseGameFrame extends JFrame {
 
     protected final AppController app;
-    private Point fixedLocation;   // to prevent dragging
 
     // =========================================================
     //  In-frame popup (toast)
@@ -33,6 +30,18 @@ public abstract class BaseGameFrame extends JFrame {
         super(title);
         this.app = app;
 
+        // --- Changing the Java Coffee Icon to a bomb one ---
+        try {
+            // Load the image
+        	// Set the taskbar and window icon
+            if (GameAssets.GAME_ICON != null) {
+                this.setIconImage(GameAssets.GAME_ICON);
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load game icon: " + e.getMessage());
+            System.out.println("[DEBUG] Game icon is null. Check path in GameAssets.");
+        }
+        
         // --- close behaviour: we decide in confirmExit() ---
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -41,17 +50,8 @@ public abstract class BaseGameFrame extends JFrame {
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
-        fixedLocation = getLocation();
 
-        // prevent dragging (force window back to fixedLocation)
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentMoved(ComponentEvent e) {
-                if (!getLocation().equals(fixedLocation)) {
-                    SwingUtilities.invokeLater(() -> setLocation(fixedLocation));
-                }
-            }
-        });
+        
 
         // when user clicks the OS X/close button
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -61,7 +61,7 @@ public abstract class BaseGameFrame extends JFrame {
             }
         });
 
-        // prepare reusable toast UI (it will be added by installToastLayer())
+        // prepare reusable toast UI
         initToastUI();
     }
 
@@ -84,11 +84,11 @@ public abstract class BaseGameFrame extends JFrame {
 
     /**
      * Exit Dialog
-     * @return true if user clicked "Yes".
+     * return true if user clicked "Yes"
      */
     private boolean showStyledExitDialog() {
         JDialog dialog = new JDialog(this, "Confirm Exit", true);
-        dialog.setUndecorated(true);             // we draw our own border
+        dialog.setUndecorated(true);
         dialog.setSize(500, 250);
         dialog.setLocationRelativeTo(this);
 
@@ -146,12 +146,6 @@ public abstract class BaseGameFrame extends JFrame {
     //  Reusable in-frame toast (golden popup message)
     // =========================================================
 
-    /**
-     * IMPORTANT: Call this once in each concrete frame AFTER you setContentPane(...)
-     * Example (in GameViewTwoBoards constructor):
-     *   setContentPane(bgPanel);
-     *   installToastLayer();
-     */
     protected final void installToastLayer() {
         // Wrap current content so we can overlay the popup above it
         Container current = getContentPane();
@@ -200,12 +194,11 @@ public abstract class BaseGameFrame extends JFrame {
         });
     }
 
-    /** Show a golden popup message inside the same frame (non-blocking). */
     protected final void showToast(String message) {
         showToast(message, 2000);
     }
 
-    /** Show a golden popup message inside the same frame (non-blocking). */
+    /** Show a golden popup message inside the same frame (non-blocking) */
     protected final void showToast(String message, int durationMs) {
         popupLabel.setText(message);
         popupPanel.setVisible(true);

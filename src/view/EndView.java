@@ -7,8 +7,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * End-of-game screen.
- * Optimized layout to ensure all elements stay within the center panel boundaries.
+ * End-of-game screen
+ * Optimized layout to ensure all elements stay within the center panel boundaries
  */
 public class EndView extends BaseGameFrame {
 

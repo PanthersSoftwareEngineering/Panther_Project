@@ -7,7 +7,7 @@ public final class CellStyle {
     private CellStyle(){}
 
     // ==============================
-    // 🌈 GLOWING BASE COLORS
+    // GLOWING BASE COLORS
     // ==============================
     public static final Color P1_BASE = new Color(90, 180, 255, 200);   // neon blue
     public static final Color P2_BASE = new Color(110, 255, 170, 200);  // neon green

@@ -12,11 +12,8 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * HistoryView
- * -----------
  * Displays the game history table.
- * Uses the same visual style as other screens (background image, rounded card,
- * styled JTable, and a "Back to Main" button).
+ * Uses the same visual style as other screens (background image, rounded card,styled JTable, and a "Back to Main" button)
  */
 public class HistoryView extends BaseGameFrame {
 
@@ -30,9 +27,7 @@ public class HistoryView extends BaseGameFrame {
     private final HistoryTableModel model;
 
     /**
-     * Creates the Game History screen.
-     *
-     * @param sys the shared SysData singleton (contains history records)
+     * Creates the Game History screen
      */
     public HistoryView(SysData sys) {
         super(AppController.getInstance(), "Game History");
@@ -52,7 +47,7 @@ public class HistoryView extends BaseGameFrame {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
         // Top spacing (keeps content away from top edge)
-        mainPanel.add(Box.createVerticalStrut(40));
+        mainPanel.add(Box.createVerticalStrut(70));
 
         // Title label (text is transparent because the title is embedded in the background image)
         JLabel title = new JLabel("Game History");
@@ -175,7 +170,7 @@ public class HistoryView extends BaseGameFrame {
     }
 
     /**
-     * Table model that adapts GameRecord objects into table rows and columns.
+     * Table model that adapts GameRecord objects into table rows and columns
      */
     private static class HistoryTableModel extends AbstractTableModel {
         private final String[] cols = {
@@ -222,7 +217,7 @@ public class HistoryView extends BaseGameFrame {
 
     /**
      * Background panel that either draws a scaled background image
-     * or a gradient fallback if the image is missing.
+     * or a gradient fallback if the image is missing
      */
     private static class BackgroundPanel extends JPanel {
         private final Image bg;
