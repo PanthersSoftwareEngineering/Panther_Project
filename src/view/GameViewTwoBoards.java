@@ -388,73 +388,86 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         boolean p1Active = (s.activeIndex() == 0);
         boolean finished = s.finished();
 
-        // Player names in headers
+        // Update HUD
         lblP1.setText(s.p1());
         lblP2.setText(s.p2());
-
-        // HUD values
         lblLives.setText("Lives: " + s.lives());
         lblPoints.setText("Points: " + s.points());
         lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
         lblActive.setText("Active: " + (p1Active ? s.p1() : s.p2()));
         lblDifficulty.setText("Difficulty: " + s.level().name());
 
-        // ACTIVE chip visibility and color
-        // (Optional but recommended) hide chips when finished
         chipP1Active.setVisible(!finished && p1Active);
         chipP2Active.setVisible(!finished && !p1Active);
         chipP1Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P1);
         chipP2Active.setBackground(UIStyles.CHIP_BG_ACTIVE_P2);
 
-        // Board symbols from the snapshot (already computed by model/controller)
         String[][] g1 = s.boardP1();
         String[][] g2 = s.boardP2();
 
-        // Refresh Player 1 board buttons
+     // --- Refresh Player 1 board buttons ---
         for (int r = 0; r < g1.length; r++) {
             for (int c = 0; c < g1[0].length; c++) {
                 CellButton btn = btn1[r][c];
                 String sym = g1[r][c];
                 btn.setText(sym);
 
-                // Color mapping is UI-only (symbol -> style)
-                btn.setBaseColor(CellStyle.colorForSymbol(sym, 0));
-                btn.setForeground(CellStyle.textColorForSymbol(sym));
+                // Check if the cell has been fully processed (answered or operated)
+                boolean isUsed = ctrl.isQuestionUsed(0, r, c) || ctrl.isSurpriseUsed(0, r, c);
+                
+                // A cell is "Pending" if it shows a Question/Gift icon but hasn't been used/activated yet
+                // We check for "?" and "❓" to be safe with different character encodings
+                boolean isQuestion = sym.equals("❓") || sym.equals("?");
+                boolean isSurprise = sym.equals("🎁");
+                boolean isSpecialPending = (isQuestion || isSurprise) && !isUsed;
 
-                // Visually mark used question/surprise cells
-                if (ctrl.isQuestionUsed(0, r, c) || ctrl.isSurpriseUsed(0, r, c)) {
+                if (isUsed) {
+                    // 1. If used -> Dark Gray "USED" style
                     btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
+                } else if (!sym.equals("·") && !isSpecialPending) {
+                    // 2. If revealed and NOT a pending special -> Lighter "Revealed" color
+                    btn.setBaseColor(new Color(50, 65, 120)); 
+                    btn.setForeground(CellStyle.textColorForSymbol(sym));
+                } else {
+                    // 3. Hidden cells OR Revealed but NOT yet activated specials -> Original Base Color
+                    btn.setBaseColor(CellStyle.colorForSymbol(sym, 0));
+                    btn.setForeground(CellStyle.textColorForSymbol(sym));
                 }
             }
         }
 
-        // Refresh Player 2 board buttons
+        // --- Refresh Player 2 board buttons ---
         for (int r = 0; r < g2.length; r++) {
             for (int c = 0; c < g2[0].length; c++) {
                 CellButton btn = btn2[r][c];
                 String sym = g2[r][c];
                 btn.setText(sym);
 
-                btn.setBaseColor(CellStyle.colorForSymbol(sym, 1));
-                btn.setForeground(CellStyle.textColorForSymbol(sym));
+                boolean isUsed = ctrl.isQuestionUsed(1, r, c) || ctrl.isSurpriseUsed(1, r, c);
+                
+                boolean isQuestion = sym.equals("❓") || sym.equals("?");
+                boolean isSurprise = sym.equals("🎁");
+                boolean isSpecialPending = (isQuestion || isSurprise) && !isUsed;
 
-                if (ctrl.isQuestionUsed(1, r, c) || ctrl.isSurpriseUsed(1, r, c)) {
+                if (isUsed) {
                     btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
+                } else if (!sym.equals("·") && !isSpecialPending) {
+                    // Lighter green for Player 2
+                    btn.setBaseColor(new Color(60, 110, 80)); 
+                    btn.setForeground(CellStyle.textColorForSymbol(sym));
+                } else {
+                    btn.setBaseColor(CellStyle.colorForSymbol(sym, 1));
+                    btn.setForeground(CellStyle.textColorForSymbol(sym));
                 }
             }
         }
 
-        
-        // During play: disable the inactive board (turn-based)
-        // After finish: enable BOTH boards so revealed colors are not greyed out
         setPanelEnabled(board1, finished || p1Active);
         setPanelEnabled(board2, finished || !p1Active);
-
         repaint();
     }
-
 
     /**
      * Recursively enables/disables an entire container and all its children

@@ -203,7 +203,10 @@ public class HistoryView extends BaseGameFrame {
                 case 2 -> r.level.name();
                 case 3 -> r.hearts;
                 case 4 -> r.points;
-                case 5 -> r.won ? "x" : "v";
+                //design prettier the won/lost in the table (to be green/red)
+                case 5 -> r.won 
+                ? "<html><div style='white-space:nowrap;'><b style='color:#00FF00;'>Won</b></div></html>" 
+                : "<html><span style='color:#FF4444;'>Lost</span></html>";
                 case 6 -> r.timeSec;
                 case 7 -> new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm")
                         .format(new java.util.Date(r.timestamp));
