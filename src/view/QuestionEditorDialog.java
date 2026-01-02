@@ -200,28 +200,34 @@ public class QuestionEditorDialog extends JDialog {
     private void onSave() {
         String id = tfId.getText();
         String text = norm(taText.getText());
-
         String o1 = norm(tfOpt1.getText());
         String o2 = norm(tfOpt2.getText());
         String o3 = norm(tfOpt3.getText());
         String o4 = norm(tfOpt4.getText());
 
-        // --- Validation rules ---
-        if (text.isEmpty()) {
-            showValidationError("Question text cannot be empty.");
-            taText.requestFocusInWindow();
+        // 1. Check for empty fields
+        if (text.isEmpty() || o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
+            showValidationError("All fields must be filled.");
             return;
         }
 
-        if (o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
-            showValidationError("All 4 options must be filled (A, B, C, D).");
-            if (o1.isEmpty()) tfOpt1.requestFocusInWindow();
-            else if (o2.isEmpty()) tfOpt2.requestFocusInWindow();
-            else if (o3.isEmpty()) tfOpt3.requestFocusInWindow();
-            else tfOpt4.requestFocusInWindow();
+        // 2. Limit length (e.g., max 200 characters for question text)
+        if (text.length() > 200) {
+            showValidationError("Question text is too long (Max 200 chars).");
             return;
         }
 
+        // 3. Language Check (English only: letters, numbers, and common punctuation)
+        // This regex allows English letters, digits, spaces, and signs like ?, !, ., ,
+        String englishRegex = "^[a-zA-Z0-9\\s\\.,\\?!\\(\\)'\"]+$";
+        
+        if (!text.matches(englishRegex) || !o1.matches(englishRegex) || 
+            !o2.matches(englishRegex) || !o3.matches(englishRegex) || !o4.matches(englishRegex)) {
+            showValidationError("Only English characters and standard punctuation are allowed.");
+            return;
+        }
+
+        // 4. Distinct options check
         var opts = List.of(o1, o2, o3, o4);
         long distinctCount = opts.stream().map(String::toLowerCase).distinct().count();
         if (distinctCount < 4) {
@@ -229,10 +235,8 @@ public class QuestionEditorDialog extends JDialog {
             return;
         }
 
-        // Get the index (0 for A, 1 for B, etc.)
-        int correctIdx = cbCorrect.getSelectedIndex(); 
-
-        // Build the result object (removed duplicate assignment)
+        // If all checks pass, save the result
+        int correctIdx = cbCorrect.getSelectedIndex();
         this.result = new Question(
                 id,
                 text,
