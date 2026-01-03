@@ -7,8 +7,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Main menu – uses BaseGameFrame for common behavior.
- * Background image comes from GameAssets.MAIN_BACKGROUND.
+ * Main menu – uses BaseGameFrame for common behavior
+ * Background image comes from GameAssets.MAIN_BACKGROUND
  */
 public class MainMenuView extends BaseGameFrame {
 
@@ -29,7 +29,7 @@ public class MainMenuView extends BaseGameFrame {
         boolean hasBackgroundImage = (bgImage != null);
 
         if (!hasBackgroundImage) {
-            // No image → draw the "MineSweeper" title as text
+            // No image -> draw the "MineSweeper" title as text
             mainPanel.add(Box.createVerticalStrut(40));
             JLabel title = new JLabel("MineSweeper");
             title.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -38,7 +38,7 @@ public class MainMenuView extends BaseGameFrame {
             mainPanel.add(title);
             mainPanel.add(Box.createVerticalStrut(80));
         } else {
-            // Title already inside the image → just push buttons down
+            // Title already inside the image -> just push buttons down
             mainPanel.add(Box.createVerticalStrut(140));
         }
 
@@ -87,8 +87,6 @@ public class MainMenuView extends BaseGameFrame {
 
         exitBtn.addActionListener(e -> confirmExit());
     }
-
-    // keep showSelf() from BaseGameFrame – no override needed
 
     // ===== background panel for this view =====
     private static class BackgroundPanel extends JPanel {

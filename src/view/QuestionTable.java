@@ -9,7 +9,7 @@ import java.awt.Dimension;
 
 /**
  * Custom JTable implementation that calculates optimal height and width 
- * for word wrap content ONCE after data load, ensuring stability.
+ * for word wrap content ONCE after data load, ensuring stability
  * This version fixes the horizontal clinging/distortion issue and enables 
  * horizontal scrolling when needed.
  */
@@ -17,14 +17,13 @@ public class QuestionTable extends JTable {
 
     // Column indices for long text (1: Text, 3: Opt1, 4: Opt2, 5: Opt3, 6: Opt4)
     private static final int[] WRAP_COLUMNS = {1, 3, 4, 5, 6};
-    // Assuming WordWrapCellRenderer exists in the same package
     private final WordWrapCellRenderer renderer = new WordWrapCellRenderer(); 
     private static final int MIN_COLUMN_WIDTH = 50; 
     
     public QuestionTable(TableModel dm) {
         super(dm);
         
-        // Critical for horizontal scrolling: allows the table to be wider than the viewport.
+        // Critical for horizontal scrolling: allows the table to be wider than the viewport
         setAutoResizeMode(JTable.AUTO_RESIZE_OFF); 
         initRenderers();
     }
@@ -40,8 +39,8 @@ public class QuestionTable extends JTable {
     }
     
     /**
-     * Public method to calculate optimal column widths and row heights ONCE 
-     * after data load or update. This fixes the clinging and scrolling issues.
+     * Public method to calculate optimal column widths and row heights ONCE after data load or update
+     * This fixes the clinging and scrolling issues
      */
     public void calculateOptimalDimensions() {
         if (getRowCount() == 0 || getColumnCount() == 0) return;
@@ -51,7 +50,7 @@ public class QuestionTable extends JTable {
         int[] maxColumnWidths = new int[getColumnCount()];
         int totalCalculatedWidth = 0; // Total width required by the content
 
-        // 1. Initial calculation loop (find max width for headers and content)
+        // Initial calculation loop (find max width for headers and content)
         for (int col = 0; col < getColumnCount(); col++) {
             
             // Start width from header size
@@ -69,13 +68,13 @@ public class QuestionTable extends JTable {
             totalCalculatedWidth += maxColumnWidths[col];
         }
         
-        // 2. Set the stable calculated widths
+        // Set the stable calculated widths
         for (int col = 0; col < getColumnCount(); col++) {
             columnModel.getColumn(col).setPreferredWidth(maxColumnWidths[col]);
             columnModel.getColumn(col).setMinWidth(maxColumnWidths[col]); // Set min width for stability
         }
 
-        // 3. --- FIX DISTORTION AND ENABLE SCROLLING ---
+        // --- FIX DISTORTION AND ENABLE SCROLLING ---
         
         int viewportWidth = 0;
         // Get the width of the visible area (the JViewport)
@@ -85,22 +84,22 @@ public class QuestionTable extends JTable {
         
         if (viewportWidth > totalCalculatedWidth && viewportWidth > 0) {
             // If the visible width is larger than the required width:
-            // 1. Set AUTO_RESIZE_LAST_COLUMN to stretch the last column to fill the gap.
+            // 1. Set AUTO_RESIZE_LAST_COLUMN to stretch the last column to fill the gap
             setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
             
-            // 2. Set the PreferredSize to the viewport width to prevent clinging.
+            // 2. Set the PreferredSize to the viewport width to prevent clinging
             setPreferredScrollableViewportSize(new Dimension(viewportWidth, getPreferredSize().height));
         } else {
             // If the required width is larger (or equal):
-            // 1. Set AUTO_RESIZE_OFF to enable the horizontal scrollbar.
+            // 1. Set AUTO_RESIZE_OFF to enable the horizontal scrollbar
             setAutoResizeMode(JTable.AUTO_RESIZE_OFF); 
             
-            // 2. Set the PreferredSize to the total calculated width.
+            // 2. Set the PreferredSize to the total calculated width
             setPreferredScrollableViewportSize(new Dimension(totalCalculatedWidth, getPreferredSize().height));
         }
         // ---------------------------------------------
         
-        // 4. Calculate max row height based on the *new* stable column widths
+        // Calculate max row height based on the *new* stable column widths
         for (int row = 0; row < maxRows; row++) {
             int rowHeight = 30; // Min height
             
@@ -109,13 +108,13 @@ public class QuestionTable extends JTable {
                     Component comp = prepareRenderer(getCellRenderer(row, colIndex), row, colIndex);
                     
                     // Set the component's width to the stable, calculated column width
-                    // This is essential for the WordWrapCellRenderer to determine the correct height.
+                    // This is essential for the WordWrapCellRenderer to determine the correct height
                     comp.setSize(columnModel.getColumn(colIndex).getWidth(), Integer.MAX_VALUE);
                     
                     rowHeight = Math.max(rowHeight, comp.getPreferredSize().height);
                 }
             }
-            // 5. Set stable row heights
+            // Set stable row heights
             setRowHeight(row, rowHeight);
         }
     }

@@ -19,9 +19,6 @@ import java.awt.event.MouseEvent;
  * 2) Names cannot be the same (case-insensitive)
  * 3) Names must be at most 10 characters
  * 4) Names may contain only English letters and digits (A-Z, a-z, 0-9)
- *
- * NOTE: This class keeps your original UI and logic.
- * Only the requested validations were added.
  */
 public class NewMatchView extends BaseGameFrame {
 
@@ -323,7 +320,7 @@ public class NewMatchView extends BaseGameFrame {
         }
     }
 
-    /** Set all 4 lines for the selected difficulty only. */
+    /** Set all 4 lines for the selected difficulty only */
     private void updateDifficultyInfo() {
         JLabel[] allLabels = {
                 easyLivesLabel, easyMinesLabel, easySurprisesLabel, easyQuestionsLabel,
@@ -487,12 +484,12 @@ public class NewMatchView extends BaseGameFrame {
 
     // ===================== small helpers =====================
 
-    /** Normalize spaces: trim and collapse multiple spaces to one. */
+    /** Normalize spaces: trim and collapse multiple spaces to one */
     private static String normName(String s) {
         return s == null ? "" : s.trim().replaceAll("\\s+", " ");
     }
 
-    /** Returns true only if the string is made of English letters and digits (A-Z, a-z, 0-9). */
+    /** Returns true only if the string is made of English letters and digits (A-Z, a-z, 0-9) */
     private static boolean isOnlyEnglishLettersAndDigits(String s) {
     	 return s != null && s.matches("^[A-Za-z0-9]+( [A-Za-z0-9]+)*$");
     }

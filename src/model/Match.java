@@ -4,47 +4,46 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Represents a single match between two players.
- * Holds the boards, scores, lives, timing information, and difficulty.
- *
+ * Represents a single match between two players
+ * Holds the boards, scores, lives, timing information, and difficulty
  * Observer pattern (Subject):
  * - Match is the Subject
  * - Views register as MatchListener and receive MatchSnapshot updates
  */
 public class Match {
-    /** First player. */
+    /** First player */
     private final Player p1;
 
-    /** Second player. */
+    /** Second player */
     private final Player p2;
 
-    /** Board for player 1. */
+    /** Board for player 1 */
     private final Board b1;
 
-    /** Board for player 2. */
+    /** Board for player 2 */
     private final Board b2;
 
-    /** Difficulty level of this match. */
+    /** Difficulty level of this match */
     private final DifficultyLevel level;
 
-    /** Remaining lives (shared between players). */
+    /** Remaining lives (shared between players) */
     private int lives;
 
-    /** Current points (shared between players). */
+    /** Current points (shared between players) */
     private int points;
 
-    /** Start time of the match in milliseconds. */
+    /** Start time of the match in milliseconds */
     private final long startTimeMs;
 
-    /** Index of active player: 0 = p1, 1 = p2. */
+    /** Index of active player: 0 = p1, 1 = p2 */
     private int active = 0;
 
-    /** Flag indicating that the match ended (by solving or losing all lives). */
+    /** Flag indicating that the match ended (by solving or losing all lives) */
     private boolean finished = false;
 
     // ========= Lives & cost configuration =========
 
-    /** Maximum number of lives during the match. */
+    /** Maximum number of lives during the match */
     private static final int MAX_LIVES = 10;
 
     // ========= Observer infrastructure =========
@@ -67,8 +66,8 @@ public class Match {
     }
 
     /**
-     * Build a snapshot for observers.
-     * Uses current cell.symbol() rendering to keep UI decoupled.
+     * Build a snapshot for observers
+     * Uses current cell.symbol() rendering to keep UI decoupled
      */
     public MatchSnapshot snapshot(){
         return new MatchSnapshot(
@@ -97,8 +96,8 @@ public class Match {
     }
 
     /**
-     * Creates a new match between two players at the specified difficulty.
-     * Initializes the boards and starting lives based on DifficultyConfig.
+     * Creates a new match between two players at the specified difficulty
+     * Initializes the boards and starting lives based on DifficultyConfig
      */
     public Match(Player p1, Player p2, DifficultyLevel level){
         this.p1 = p1;
@@ -119,17 +118,17 @@ public class Match {
     public Board board2(){ return b2; }
 
     /**
-     * @return the board belonging to the currently active player.
+     * return the board belonging to the currently active player
      */
     public Board boardOfActive(){ return active == 0 ? b1 : b2; }
 
     /**
-     * @return index of the active player (0 or 1).
+     * return index of the active player (0 or 1)
      */
     public int activeIndex(){ return active; }
 
     /**
-     * Switches the active player.
+     * Switches the active player
      */
     public void endTurn(){
         active = 1 - active;
@@ -143,34 +142,35 @@ public class Match {
 
     // ---------- Lives / points logic ----------
 
-    /** כמה נקודות שווה חיים אחד לפי רמת קושי */
     private int lifeValue(){
         return switch (level){
-            case EASY   -> 5;   // עלות "חיים" במשחק קל
-            case MEDIUM -> 8;   // בינוני
-            case HARD   -> 12;  // קשה
+            case EASY   -> 5;   
+            case MEDIUM -> 8;    
+            case HARD   -> 12;
         };
     }
 
     /**
-     * הוספת/הפחתת חיים:
-     * - אם מוסיפים חיים ועוברים את 10 → ההפרש מומר לנקודות לפי רמת הקושי
-     * - אם מורידים חיים → לא יורדים מתחת ל-0
+     * Adds or removes lives
+     * Rules:
+     * - When adding lives and exceeding MAX_LIVES, the overflow is converted into points
+     *   according to the current difficulty level
+     * - When removing lives, the value never goes below 0
      */
     public void addLives(int delta){
         if (delta == 0) return;
 
-        // הורדת חיים
+        // Removing lives
         if (delta < 0){
             lives = Math.max(0, lives + delta);
             notifyListeners();
             return;
         }
 
-        // כאן delta > 0 → מוסיפים חיים
+        // delta > 0 -> adding lives
         lives += delta;
 
-        // אם עברנו את התקרה, ההפרש הופך לנקודות
+        // If lives exceed the maximum, convert the overflow into points
         if (lives > MAX_LIVES){
             int overflow = lives - MAX_LIVES;
             lives = MAX_LIVES;
@@ -182,7 +182,9 @@ public class Match {
         notifyListeners();
     }
 
-    /** המרת כל החיים שנותרו לנקודות בסיום המשחק */
+    /**
+     * Converts all remaining lives into points at the end of the game
+     */
     public void convertLivesToPoints(){
         if (lives <= 0) return;
         int lv = lifeValue();
@@ -191,8 +193,9 @@ public class Match {
         notifyListeners();
     }
 
+
     /**
-     * Adds (or subtracts) points.
+     * Adds (or subtracts) points
      */
     public void addPoints(int d){
         points += d;
@@ -200,14 +203,14 @@ public class Match {
     }
 
     /**
-     * @return true if the match is finished either by flag or by running out of lives.
+     * return true if the match is finished either by flag or by running out of lives
      */
     public boolean isFinished(){
         return finished || lives == 0;
     }
 
     /**
-     * @return elapsed time in seconds since the match started.
+     * return elapsed time in seconds since the match started
      */
     public long elapsedSeconds(){
         return (System.currentTimeMillis() - startTimeMs) / 1000;
@@ -216,43 +219,38 @@ public class Match {
     // ========= Finish conditions =========
 
     /**
-     * Recomputes whether the match is finished.
+     * Recomputes whether the match is finished
      * The match ends if:
      * - lives reach zero, or
      * - on at least one board:
-     *      • every non-mine cell is revealed (פתרון רגיל), OR
+     *      • every non-mine cell is revealed, OR
      *      • all mines are flagged, OR
-     *      • all mines are revealed.
+     *      • all mines are revealed
      */
     public void checkFinish(){
         boolean before = this.finished;
 
-        // 1. נגמרו חיים
+        // 1. No lives remaining
         if (lives == 0){
             finished = true;
         } else {
-            // 2. אחד הלוחות נפתר (כל התאים הבטוחים נחשפו)
-            // (השארת הקוד שלך כתגובה - לא מוחק)
-            /**if (boardSolved(b1) || boardSolved(b2)){
-                finished = true;
-                return;
-            }*/
-
-            // 3. בכל מוקש בלוח 1 או 2: או דגל או חשוף
+            // 2. All mines on board 1 or board 2 are handled:
+            //    each mine is either flagged or revealed
             if (allMinesHandled(b1) || allMinesHandled(b2)){
                 finished = true;
             }
         }
 
-        // אם מצב הסיום השתנה → נעדכן listeners
-        // וגם אם finished כבר true, עדיין ייתכן שתרצה עדכון (לא חובה).
+        // If the finished state has changed, notify listeners
+        // Even if finished is already true, an update may still be required
         if (before != this.finished || this.finished){
             notifyListeners();
         }
     }
 
     /**
-     * Checks whether a board is solved: every non-mine cell is revealed.
+     * Checks whether a board is fully solved:
+     * all non-mine cells have been revealed
      */
     private boolean boardSolved(Board b){
         for(int r = 0; r < b.rows(); r++){
@@ -266,15 +264,15 @@ public class Match {
     }
 
     /**
-     * מחזירה true אם כל תאי המוקש בלוח
-     * או מסומנים בדגל או חשופים.
+     * Returns true if all mine cells on the board
+     * are either flagged or revealed
      */
     private boolean allMinesHandled(Board b){
         for (int r = 0; r < b.rows(); r++){
             for (int c = 0; c < b.cols(); c++){
                 Cell cell = b.cell(r,c);
                 if (cell instanceof MineCell){
-                    // אם המוקש לא חשוף וגם לא מסומן בדגל → עוד לא "טופל"
+                    // A mine that is neither revealed nor flagged is not yet handled
                     if (!cell.isRevealed() && !cell.isFlagged()){
                         return false;
                     }
@@ -285,8 +283,8 @@ public class Match {
     }
 
     /**
-     * Creates a GameRecord snapshot from this match for storing in history.
-     *
+     * Creates a GameRecord snapshot from this match
+     * for storing the result in the game history
      * @param won indicates whether the players won the game
      */
     public SysData.GameRecord toRecord(boolean won){
@@ -295,3 +293,4 @@ public class Match {
         );
     }
 }
+

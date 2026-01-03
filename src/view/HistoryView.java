@@ -12,11 +12,8 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * HistoryView
- * -----------
  * Displays the game history table.
- * Uses the same visual style as other screens (background image, rounded card,
- * styled JTable, and a "Back to Main" button).
+ * Uses the same visual style as other screens (background image, rounded card,styled JTable, and a "Back to Main" button)
  */
 public class HistoryView extends BaseGameFrame {
 
@@ -30,9 +27,7 @@ public class HistoryView extends BaseGameFrame {
     private final HistoryTableModel model;
 
     /**
-     * Creates the Game History screen.
-     *
-     * @param sys the shared SysData singleton (contains history records)
+     * Creates the Game History screen
      */
     public HistoryView(SysData sys) {
         super(AppController.getInstance(), "Game History");
@@ -175,7 +170,7 @@ public class HistoryView extends BaseGameFrame {
     }
 
     /**
-     * Table model that adapts GameRecord objects into table rows and columns.
+     * Table model that adapts GameRecord objects into table rows and columns
      */
     private static class HistoryTableModel extends AbstractTableModel {
         private final String[] cols = {
@@ -208,7 +203,10 @@ public class HistoryView extends BaseGameFrame {
                 case 2 -> r.level.name();
                 case 3 -> r.hearts;
                 case 4 -> r.points;
-                case 5 -> r.won ? "x" : "v";
+                //design prettier the won/lost in the table (to be green/red)
+                case 5 -> r.won 
+                ? "<html><div style='white-space:nowrap;'><b style='color:#00FF00;'>Won</b></div></html>" 
+                : "<html><span style='color:#FF4444;'>Lost</span></html>";
                 case 6 -> r.timeSec;
                 case 7 -> new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm")
                         .format(new java.util.Date(r.timestamp));
@@ -222,7 +220,7 @@ public class HistoryView extends BaseGameFrame {
 
     /**
      * Background panel that either draws a scaled background image
-     * or a gradient fallback if the image is missing.
+     * or a gradient fallback if the image is missing
      */
     private static class BackgroundPanel extends JPanel {
         private final Image bg;

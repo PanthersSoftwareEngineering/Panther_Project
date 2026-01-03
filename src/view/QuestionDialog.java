@@ -1,6 +1,3 @@
-// =======================
-// view/QuestionDialog.java
-// =======================
 package view;
 
 import javax.swing.*;
@@ -22,7 +19,7 @@ public class QuestionDialog extends JDialog {
 
         this.correctIndex = correctIndex;
 
-        // ✅ no closing by X / ESC
+        // no closing by X / ESC
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 
         // ================= Root =================
@@ -114,7 +111,7 @@ public class QuestionDialog extends JDialog {
             }
         }
 
-        // ✅ 3 seconds then close
+        // 3 seconds then close
         Timer t = new Timer(3000, ev -> {
             ((Timer) ev.getSource()).stop();
             dispose();
@@ -124,7 +121,7 @@ public class QuestionDialog extends JDialog {
     }
 
     public int showDialog() {
-        setVisible(true); // modal
-        return answer;    // always >=0 now
+        setVisible(true);
+        return answer;
     }
 }

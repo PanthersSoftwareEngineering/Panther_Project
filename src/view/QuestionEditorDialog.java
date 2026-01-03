@@ -11,21 +11,21 @@ import java.util.List;
 
 /**
  * Styled modal dialog for adding/editing questions.
- * Fully aligned with Navy/Gold theme and BaseGameFrame buttons.
+ * Fully aligned with Navy/Gold theme and BaseGameFrame buttons
  */
 public class QuestionEditorDialog extends JDialog {
 
     private Question result = null;
     private final boolean isAddMode;
 
-    // --- Components ---
+    // Components 
     private final JTextField tfId;
     private final JTextArea taText;
     private final JComboBox<String> cbLevel;
     private final JTextField tfOpt1, tfOpt2, tfOpt3, tfOpt4;
     private final JComboBox<String> cbCorrect;
 
-    // --- Navy/Gold Styling (Matching History/Main Menu) ---
+    // Navy/Gold Styling in buttons (Matching History/Main Menu)
     private static final Color DARK_BG = new Color(15, 18, 40, 250);
     private static final Color GOLD_ACCENT = new Color(255, 190, 60);
     private static final Color FIELD_BG = new Color(30, 32, 70);
@@ -46,7 +46,7 @@ public class QuestionEditorDialog extends JDialog {
         setSize(750, 650);
         setLocationRelativeTo(owner);
 
-        // --- Layout Setup ---
+        // Layout Setup 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(DARK_BG);
         root.setBorder(new LineBorder(GOLD_ACCENT, 4, true));
@@ -67,7 +67,7 @@ public class QuestionEditorDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 10, 8, 10);
 
-        // --- Component Initialization ---
+        // Component Initialization 
         String idValue = isAddMode ? String.valueOf(maxExistingId + 1) : original.id();
         tfId = new JTextField(idValue);
         tfId.setEditable(false);
@@ -110,7 +110,7 @@ public class QuestionEditorDialog extends JDialog {
 
         root.add(inputGrid, BorderLayout.CENTER);
 
-        // --- Buttons Row (Using BaseGameFrame.RoundedButton) ---
+        // Buttons Row (Using BaseGameFrame.RoundedButton) 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 20));
         buttonsPanel.setOpaque(false);
 
@@ -144,7 +144,7 @@ public class QuestionEditorDialog extends JDialog {
             tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
         } else if (comp instanceof JComboBox<?> cb) {
             cb.setBorder(new LineBorder(GOLD_ACCENT, 1));
-            // This ensures the items inside the dropdown look good too
+            // ensures the items inside the dropdown look good too
             cb.setRenderer(new DefaultListCellRenderer() {
                 @Override
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -189,9 +189,8 @@ public class QuestionEditorDialog extends JDialog {
         return s == null ? "" : s.trim();
     }
 
-    /**
-     * Show validation error in the same theme (visible on top of this dialog).
-     */
+    
+    //Show validation error in the same theme (visible on top of this dialog)
     private void showValidationError(String msg) {
         JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
         StyledAlertDialog.show(owner, "Input Error", msg, true);
@@ -200,28 +199,34 @@ public class QuestionEditorDialog extends JDialog {
     private void onSave() {
         String id = tfId.getText();
         String text = norm(taText.getText());
-
         String o1 = norm(tfOpt1.getText());
         String o2 = norm(tfOpt2.getText());
         String o3 = norm(tfOpt3.getText());
         String o4 = norm(tfOpt4.getText());
 
-        // --- Validation rules ---
-        if (text.isEmpty()) {
-            showValidationError("Question text cannot be empty.");
-            taText.requestFocusInWindow();
+        // 1. Check for empty fields
+        if (text.isEmpty() || o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
+            showValidationError("All fields must be filled.");
             return;
         }
 
-        if (o1.isEmpty() || o2.isEmpty() || o3.isEmpty() || o4.isEmpty()) {
-            showValidationError("All 4 options must be filled (A, B, C, D).");
-            if (o1.isEmpty()) tfOpt1.requestFocusInWindow();
-            else if (o2.isEmpty()) tfOpt2.requestFocusInWindow();
-            else if (o3.isEmpty()) tfOpt3.requestFocusInWindow();
-            else tfOpt4.requestFocusInWindow();
+        // 2. Limit length (e.g., max 200 characters for question text)
+        if (text.length() > 200) {
+            showValidationError("Question text is too long (Max 200 chars).");
             return;
         }
 
+        // 3. Language Check (English only: letters, numbers, and common punctuation)
+        // This regex allows English letters, digits, spaces, and signs like ?, !, ., ,
+        String englishRegex = "^[a-zA-Z0-9\\s\\.,\\?!\\(\\)'\"]+$";
+        
+        if (!text.matches(englishRegex) || !o1.matches(englishRegex) || 
+            !o2.matches(englishRegex) || !o3.matches(englishRegex) || !o4.matches(englishRegex)) {
+            showValidationError("Only English characters and standard punctuation are allowed.");
+            return;
+        }
+
+        // 4. Distinct options check
         var opts = List.of(o1, o2, o3, o4);
         long distinctCount = opts.stream().map(String::toLowerCase).distinct().count();
         if (distinctCount < 4) {
@@ -229,15 +234,13 @@ public class QuestionEditorDialog extends JDialog {
             return;
         }
 
-        // Get the index (0 for A, 1 for B, etc.)
-        int correctIdx = cbCorrect.getSelectedIndex(); 
-
-        // Build the result object (removed duplicate assignment)
+        // If all checks pass, save the result
+        int correctIdx = cbCorrect.getSelectedIndex();
         this.result = new Question(
                 id,
                 text,
                 opts,
-                correctIdx, // Use the correct variable name here
+                correctIdx,
                 QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
         );
         
