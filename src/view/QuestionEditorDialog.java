@@ -43,7 +43,7 @@ public class QuestionEditorDialog extends JDialog {
         super(owner, original == null ? "Add Question" : "Edit Question", true);
         this.isAddMode = (original == null);
 
-        // ✅ refresh dynamic accent at dialog creation time
+        // refresh dynamic accent at dialog creation time
         GOLD_ACCENT = UIStyles.ACCENT;
 
         setUndecorated(true);

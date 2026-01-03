@@ -13,8 +13,7 @@ import model.Question;
 
 /**
  * Management window for all questions. 
- * Fully synced with BaseGameFrame design, Main Menu background, and centered title
- */
+ **/
 public class QuestionManagerView extends BaseGameFrame { 
 
     private final QuestionController controller;
@@ -27,8 +26,8 @@ public class QuestionManagerView extends BaseGameFrame {
     public QuestionManagerView(QuestionController controller) {
         super(AppController.getInstance(), "Question Manager");
         this.controller = controller;
-        // =====  Background Setup (Main Menu Background) =====
-        Image bgImage = GameAssets.MATCH_BACKGROUND; // Switched to MAIN_MENU
+        // =====  Background Setup =====
+        Image bgImage = GameAssets.MATCH_BACKGROUND; 
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new GridBagLayout());
         setContentPane(bgPanel);
@@ -40,7 +39,6 @@ public class QuestionManagerView extends BaseGameFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Glass-morphism effect matching History card
                 g2.setColor(new Color(0, 0, 0, 180)); 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
                 g2.dispose();

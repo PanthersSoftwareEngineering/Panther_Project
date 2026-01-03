@@ -9,7 +9,6 @@ import java.awt.*;
 /**
  * Main menu screen.
  * Uses BaseGameFrame for consistent window behavior and styling.
- * Shows a visible title (not embedded in the background) and the main navigation buttons.
  */
 public class MainMenuView extends BaseGameFrame {
 
@@ -19,34 +18,25 @@ public class MainMenuView extends BaseGameFrame {
         // ===== background =====
         Image bgImage = GameAssets.MAIN_BACKGROUND;
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
-        bgPanel.setLayout(new GridBagLayout());
+        bgPanel.setLayout(new GridBagLayout()); 
         setContentPane(bgPanel);
 
-        // ===== main vertical panel =====
+        // ===== main vertical column (title + buttons) =====
         JPanel mainPanel = new JPanel();
         mainPanel.setOpaque(false);
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Move title + buttons slightly higher
-        mainPanel.add(Box.createVerticalStrut(40));
-
-        // ===== TITLE (ALWAYS VISIBLE) =====
+        // ===== Title =====
         JLabel title = new JLabel("MineSweeper", SwingConstants.CENTER);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setForeground(UIStyles.ACCENT);
         title.setFont(new Font("Segoe UI", Font.BOLD, 100));
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(title);
 
-        // Optional: subtle shadow-ish border using a transparent panel behind the title
-        // (helps readability on bright backgrounds without adding a "grey card")
-        JPanel titleWrap = new JPanel(new GridBagLayout());
-        titleWrap.setOpaque(false);
-        titleWrap.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-        titleWrap.add(title);
-
-        mainPanel.add(titleWrap);
-
-        // spacing between title and buttons (slightly higher than before)
-        mainPanel.add(Box.createVerticalStrut(55));
+        // Gap between title and buttons
+        mainPanel.add(Box.createVerticalStrut(70));
 
         // ===== buttons column =====
         JPanel buttonsPanel = new JPanel();
@@ -63,6 +53,12 @@ public class MainMenuView extends BaseGameFrame {
         RoundedButton personalizationBtn = new RoundedButton("Personalization", 700, 90, 50);
         RoundedButton exitBtn    = new RoundedButton("Exit", 700, 90, 50);
 
+        newGameBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        historyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        qmanBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        personalizationBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        exitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         buttonsPanel.add(newGameBtn);
         buttonsPanel.add(Box.createVerticalStrut(gap));
         buttonsPanel.add(historyBtn);
@@ -74,9 +70,14 @@ public class MainMenuView extends BaseGameFrame {
         buttonsPanel.add(exitBtn);
 
         mainPanel.add(buttonsPanel);
-        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(Box.createVerticalStrut(30));
 
-        bgPanel.add(mainPanel, new GridBagConstraints());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.NORTH; 
+        gbc.insets = new Insets(-150, 0, 0, 0);  
+        bgPanel.add(mainPanel, gbc);
 
         // ===== actions =====
         newGameBtn.addActionListener(e -> {
@@ -115,7 +116,6 @@ public class MainMenuView extends BaseGameFrame {
             super.paintComponent(g);
 
             if (bg == null) {
-                // gradient fallback
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setPaint(new GradientPaint(
                         0, 0, new Color(12, 12, 20),
@@ -131,7 +131,6 @@ public class MainMenuView extends BaseGameFrame {
             int panelH = getHeight();
             if (imgW <= 0 || imgH <= 0) return;
 
-            // cover screen (like wallpaper)
             double scale = Math.max((double) panelW / imgW, (double) panelH / imgH);
             int drawW = (int) (imgW * scale);
             int drawH = (int) (imgH * scale);
