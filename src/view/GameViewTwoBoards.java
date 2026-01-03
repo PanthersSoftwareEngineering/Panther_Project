@@ -29,7 +29,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
     /** App-level controller used for navigation between screens (e.g., end screen, main menu)*/
     private final AppController app;
 
-    // ========================= HUD Labels =========================
+    // ## HUD Labels ##
     /** Player names shown above each board. */
     private final JLabel lblP1 = new JLabel();
     private final JLabel lblP2 = new JLabel();
@@ -41,12 +41,12 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
     private final JLabel lblActive = new JLabel();
     private final JLabel lblDifficulty = new JLabel();
 
-    // ========================= ACTIVE chips =========================
+    // ## ACTIVE chips ##
     /** Small badge that indicates which board/player is currently active (turn-based) */
     private final JLabel chipP1Active = new JLabel("ACTIVE", SwingConstants.CENTER);
     private final JLabel chipP2Active = new JLabel("ACTIVE", SwingConstants.CENTER);
 
-    // ========================= Board containers =========================
+    // ## Board containers ##
     /** Board panels (each contains a grid of CellButton components) */
     private final JPanel board1 = new JPanel();
     private final JPanel board2 = new JPanel();
@@ -54,7 +54,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
     /** Buttons grids: btn1 for Player 1 board, btn2 for Player 2 board */
     private CellButton[][] btn1, btn2;
 
-    // ========================= Timers and state =========================
+    // ## Timers and state ##
     /** Swing timer used for updating the "Time" label every second */
     private Timer timer;
 
@@ -81,7 +81,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         // Observer pattern: this view listens to match changes via snapshots
         ctrl.addMatchListener(this);
 
-        // ========================= Background =========================
+        // ## Background ##
         BackgroundPanel bg = new BackgroundPanel(GameAssets.MATCH_BACKGROUND);
         bg.setLayout(new BorderLayout(8, 8));
         setContentPane(bg);
@@ -89,7 +89,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         // Enables toast messages to appear above all UI components
         installToastLayer();
 
-        // ========================= HUD (top area) =========================
+        // ## HUD (top area) ###
         JPanel hud = UIStyles.translucentPanel(new BorderLayout(), UIStyles.HUD_PANEL_BG);
         hud.setBorder(UIStyles.pad(12, 16, 12, 16));
 
@@ -150,7 +150,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         bg.add(topWrap, BorderLayout.NORTH);
 
-        // ========================= Board headers (names + ACTIVE chip) =========================
+        // ## Board headers (names + ACTIVE chip) ##
         lblP1.setHorizontalAlignment(SwingConstants.CENTER);
         lblP2.setHorizontalAlignment(SwingConstants.CENTER);
         UIStyles.styleTitle(lblP1);
@@ -207,7 +207,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         // Build the grid of buttons for each board once (listeners delegate to controller)
         buildBoards();
 
-        // ========================= Timer =========================
+        // ## Timer ##
         // Only updates the clock + difficulty label (UI refresh of board comes from snapshots)
         timer = new Timer(1000, e -> {
             lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
@@ -223,7 +223,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         setVisible(true);
     }
 
-    // ========================= Observer callback =========================
+    // ## Observer callback ##
 
     /**
      * Called by the controller/model whenever the match state changes.
@@ -240,7 +240,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         });
     }
 
-    // ========================= Board building =========================
+    // ## Board building ##
 
     /**
      * Creates the button grids for both players and attaches mouse listeners.
@@ -305,7 +305,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         board2.repaint();
     }
 
-    // ========================= Click handling =========================
+    // ## Click handling ##
 
     /**
      * Handles a click on a specific cell and delegates to the controller.
@@ -378,12 +378,9 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         return "0 " + unit;
     }
 
-    // ========================= Snapshot -> UI refresh =========================
+    // Snapshot =>maening UI refresh 
 
-    /**
-     * Updates all UI components based on the snapshot.
-     * This keeps the view fully synchronized with the model state
-     */
+     // Updates all UI components based on the snapshot.This keeps the view fully synchronized with the model state
     private void refreshFromSnapshot(MatchSnapshot s) {
         boolean p1Active = (s.activeIndex() == 0);
         boolean finished = s.finished();
@@ -405,7 +402,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         String[][] g1 = s.boardP1();
         String[][] g2 = s.boardP2();
 
-     // --- Refresh Player 1 board buttons ---
+        //Refresh Player 1 board buttons 
         for (int r = 0; r < g1.length; r++) {
             for (int c = 0; c < g1[0].length; c++) {
                 CellButton btn = btn1[r][c];
@@ -422,7 +419,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
                 boolean isSpecialPending = (isQuestion || isSurprise) && !isUsed;
 
                 if (isUsed) {
-                    // 1. If used -> Dark Gray "USED" style
+                    // 1. If used -> Dark Gray "USED" tiles style
                     btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
                 } else if (!sym.equals("·") && !isSpecialPending) {
@@ -437,7 +434,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
             }
         }
 
-        // --- Refresh Player 2 board buttons ---
+        //Refresh Player 2 board buttons
         for (int r = 0; r < g2.length; r++) {
             for (int c = 0; c < g2[0].length; c++) {
                 CellButton btn = btn2[r][c];
@@ -480,12 +477,9 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         }
     }
 
-    // ========================= End-of-game handling =========================
+    // ## End-of-game handling ##
 
-    /**
-     * Checks if the match finished
-     * If finished: stops timer, waits briefly (2s), then opens EndScreen
-     */
+    //Checks if the match finished. If finished: stops timer, waits briefly (2s), then opens EndScreen
     private void endCheck(MatchSnapshot s) {
         if (!s.finished()) return;
         if (endSequenceStarted) return; // guard against duplicate triggers
@@ -508,7 +502,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         delay.start();
     }
 
-    // ========================= QuestionUI implementation =========================
+    // ## QuestionUI implementation ##
 
     /**
      * Called by controller when a Question cell is activated.

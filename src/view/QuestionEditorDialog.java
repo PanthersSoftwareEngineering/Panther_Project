@@ -18,14 +18,14 @@ public class QuestionEditorDialog extends JDialog {
     private Question result = null;
     private final boolean isAddMode;
 
-    // --- Components ---
+    // Components 
     private final JTextField tfId;
     private final JTextArea taText;
     private final JComboBox<String> cbLevel;
     private final JTextField tfOpt1, tfOpt2, tfOpt3, tfOpt4;
     private final JComboBox<String> cbCorrect;
 
-    // --- Navy/Gold Styling (Matching History/Main Menu) ---
+    // Navy/Gold Styling in buttons (Matching History/Main Menu)
     private static final Color DARK_BG = new Color(15, 18, 40, 250);
     private static final Color GOLD_ACCENT = new Color(255, 190, 60);
     private static final Color FIELD_BG = new Color(30, 32, 70);
@@ -46,7 +46,7 @@ public class QuestionEditorDialog extends JDialog {
         setSize(750, 650);
         setLocationRelativeTo(owner);
 
-        // --- Layout Setup ---
+        // Layout Setup 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(DARK_BG);
         root.setBorder(new LineBorder(GOLD_ACCENT, 4, true));
@@ -67,7 +67,7 @@ public class QuestionEditorDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 10, 8, 10);
 
-        // --- Component Initialization ---
+        // Component Initialization 
         String idValue = isAddMode ? String.valueOf(maxExistingId + 1) : original.id();
         tfId = new JTextField(idValue);
         tfId.setEditable(false);
@@ -110,7 +110,7 @@ public class QuestionEditorDialog extends JDialog {
 
         root.add(inputGrid, BorderLayout.CENTER);
 
-        // --- Buttons Row (Using BaseGameFrame.RoundedButton) ---
+        // Buttons Row (Using BaseGameFrame.RoundedButton) 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 20));
         buttonsPanel.setOpaque(false);
 
@@ -189,9 +189,8 @@ public class QuestionEditorDialog extends JDialog {
         return s == null ? "" : s.trim();
     }
 
-    /**
-     * Show validation error in the same theme (visible on top of this dialog)
-     */
+    
+    //Show validation error in the same theme (visible on top of this dialog)
     private void showValidationError(String msg) {
         JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
         StyledAlertDialog.show(owner, "Input Error", msg, true);
