@@ -7,8 +7,9 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Main menu – uses BaseGameFrame for common behavior
- * Background image comes from GameAssets.MAIN_BACKGROUND
+ * Main menu screen.
+ * Uses BaseGameFrame for consistent window behavior and styling.
+ * Shows a visible title (not embedded in the background) and the main navigation buttons.
  */
 public class MainMenuView extends BaseGameFrame {
 
@@ -21,26 +22,31 @@ public class MainMenuView extends BaseGameFrame {
         bgPanel.setLayout(new GridBagLayout());
         setContentPane(bgPanel);
 
-        // ===== main vertical panel  =====
+        // ===== main vertical panel =====
         JPanel mainPanel = new JPanel();
         mainPanel.setOpaque(false);
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
-        boolean hasBackgroundImage = (bgImage != null);
+        // Move title + buttons slightly higher
+        mainPanel.add(Box.createVerticalStrut(40));
 
-        if (!hasBackgroundImage) {
-            // No image -> draw the "MineSweeper" title as text
-            mainPanel.add(Box.createVerticalStrut(40));
-            JLabel title = new JLabel("MineSweeper");
-            title.setAlignmentX(Component.CENTER_ALIGNMENT);
-            title.setForeground(new Color(255, 204, 0));
-            title.setFont(new Font("Segoe UI", Font.BOLD, 100));
-            mainPanel.add(title);
-            mainPanel.add(Box.createVerticalStrut(80));
-        } else {
-            // Title already inside the image -> just push buttons down
-            mainPanel.add(Box.createVerticalStrut(140));
-        }
+        // ===== TITLE (ALWAYS VISIBLE) =====
+        JLabel title = new JLabel("MineSweeper", SwingConstants.CENTER);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setForeground(UIStyles.ACCENT);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 100));
+
+        // Optional: subtle shadow-ish border using a transparent panel behind the title
+        // (helps readability on bright backgrounds without adding a "grey card")
+        JPanel titleWrap = new JPanel(new GridBagLayout());
+        titleWrap.setOpaque(false);
+        titleWrap.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        titleWrap.add(title);
+
+        mainPanel.add(titleWrap);
+
+        // spacing between title and buttons (slightly higher than before)
+        mainPanel.add(Box.createVerticalStrut(55));
 
         // ===== buttons column =====
         JPanel buttonsPanel = new JPanel();
@@ -54,6 +60,7 @@ public class MainMenuView extends BaseGameFrame {
         RoundedButton newGameBtn = new RoundedButton("New Game", 700, 90, 50);
         RoundedButton historyBtn = new RoundedButton("Games History", 700, 90, 50);
         RoundedButton qmanBtn    = new RoundedButton("Questions Management", 700, 90, 50);
+        RoundedButton personalizationBtn = new RoundedButton("Personalization", 700, 90, 50);
         RoundedButton exitBtn    = new RoundedButton("Exit", 700, 90, 50);
 
         buttonsPanel.add(newGameBtn);
@@ -61,6 +68,8 @@ public class MainMenuView extends BaseGameFrame {
         buttonsPanel.add(historyBtn);
         buttonsPanel.add(Box.createVerticalStrut(gap));
         buttonsPanel.add(qmanBtn);
+        buttonsPanel.add(Box.createVerticalStrut(gap));
+        buttonsPanel.add(personalizationBtn);
         buttonsPanel.add(Box.createVerticalStrut(gap));
         buttonsPanel.add(exitBtn);
 
@@ -82,6 +91,11 @@ public class MainMenuView extends BaseGameFrame {
 
         qmanBtn.addActionListener(e -> {
             app.openQuestionManager();
+            dispose();
+        });
+
+        personalizationBtn.addActionListener(e -> {
+            app.openPersonalization();
             dispose();
         });
 
@@ -115,7 +129,6 @@ public class MainMenuView extends BaseGameFrame {
             int imgH = bg.getHeight(null);
             int panelW = getWidth();
             int panelH = getHeight();
-
             if (imgW <= 0 || imgH <= 0) return;
 
             // cover screen (like wallpaper)

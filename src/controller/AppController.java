@@ -5,6 +5,7 @@ import javax.swing.SwingUtilities;
 import model.DifficultyLevel;
 import model.*;
 import view.StartListener;
+import view.UIStyles;
 
 /**
  * Central application controller (Singleton)
@@ -29,6 +30,7 @@ public class AppController implements StartListener {
      */
     private AppController(){
     	sys = SysData.getInstance();
+    	UIStyles.setAccent(sys.getAccentColor());
     	
     }
 
@@ -105,7 +107,13 @@ public class AppController implements StartListener {
         QuestionController qc = QuestionController.getInstance(sys);
         new view.QuestionManagerView(qc).showSelf();
     }
-
+    
+    /**
+     * Opens the game personalization screen
+     */
+    public void openPersonalization() {
+        new view.PersonalizationView(this).showSelf();
+    }
     /**
      * Opens the end-of-game screen summarizing the result of the given record
      * @param rec the game record of the just-finished match

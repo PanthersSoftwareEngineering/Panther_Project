@@ -1,5 +1,4 @@
 package view;
-
 import controller.AppController;
 import controller.MatchController;
 import model.MatchListener;
@@ -60,12 +59,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
     /** Prevents running the end-sequence twice when match finished snapshot arrives multiple times */
     private boolean endSequenceStarted = false;
-
-    /**
-     * Holds the latest snapshot for possible timer syncing / debugging
-     * volatile ensures visibility across Swing timer thread and EDT
-     */
-    private volatile MatchSnapshot lastSnapshot = null;
 
     /**
      * Constructs the view, registers it as an observer, and builds the full UI
@@ -231,8 +224,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
      */
     @Override
     public void onMatchChanged(MatchSnapshot s) {
-        this.lastSnapshot = s;
-
         // Ensure UI changes happen on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             refreshFromSnapshot(s);

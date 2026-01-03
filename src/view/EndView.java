@@ -37,7 +37,7 @@ public class EndView extends BaseGameFrame {
 
         JLabel titleLabel = new JLabel(won ? "YOU WON !" : "YOU LOST...");
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLabel.setForeground(new Color(255, 204, 0));
+        titleLabel.setForeground(UIStyles.ACCENT);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 80)); // Slightly smaller title
 
         topPanel.add(titleLabel);
@@ -168,7 +168,7 @@ public class EndView extends BaseGameFrame {
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 22));
         lbl.setOpaque(true);
         lbl.setBackground(new Color(15, 17, 26));
-        lbl.setBorder(BorderFactory.createLineBorder(new Color(255, 190, 60), 2));
+        lbl.setBorder(BorderFactory.createLineBorder(UIStyles.ACCENT));
         lbl.setPreferredSize(new Dimension(250, 45)); // Reduced size
         return lbl;
     }

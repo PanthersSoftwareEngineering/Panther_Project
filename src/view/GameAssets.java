@@ -51,6 +51,9 @@ public final class GameAssets {
 
     public static final String MATCH_BG_PATH =
             "assets/MatchViewPics/MatchBackground.png";
+    
+    public static final String PERSON_BG_PATH =
+            "assets/PersonalizationPics/PersonalizationBack.png";
 
     public static final String[] WIN_GIF_PATHS = {
             "assets/EndGamePics/win1.gif",
@@ -133,6 +136,9 @@ public final class GameAssets {
 
     public static final Image END_BACKGROUND =
             loadImageOnce(END_BG_PATH);
+    
+    public static final Image  PERSON_BACKGROUND =
+            loadImageOnce(PERSON_BG_PATH);
 
 
     public static final Image MATCH_BACKGROUND= loadImageOnce(MATCH_BG_PATH);
