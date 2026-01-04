@@ -55,7 +55,7 @@ public class PersonalizationView extends BaseGameFrame {
         JPanel topPanel = new JPanel();
         topPanel.setOpaque(false);
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
-        topPanel.add(Box.createVerticalStrut(0));
+        topPanel.add(Box.createVerticalStrut(40));
 
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         titleLabel.setForeground(UIStyles.ACCENT);
