@@ -145,7 +145,7 @@ public class EndView extends BaseGameFrame {
     private JLabel createFieldTitle(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setForeground(Color.WHITE);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 24)); // Reduced font size
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 24)); 
         return lbl;
     }
 
@@ -156,7 +156,7 @@ public class EndView extends BaseGameFrame {
         lbl.setOpaque(true);
         lbl.setBackground(Color.WHITE);
         lbl.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
-        lbl.setPreferredSize(new Dimension(350, 45)); // Reduced size
+        lbl.setPreferredSize(new Dimension(350, 45)); 
         return lbl;
     }
 
@@ -167,7 +167,7 @@ public class EndView extends BaseGameFrame {
         lbl.setOpaque(true);
         lbl.setBackground(new Color(15, 17, 26));
         lbl.setBorder(BorderFactory.createLineBorder(UIStyles.ACCENT));
-        lbl.setPreferredSize(new Dimension(250, 45)); // Reduced size
+        lbl.setPreferredSize(new Dimension(250, 45));
         return lbl;
     }
 

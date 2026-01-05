@@ -39,7 +39,6 @@ public abstract class BaseGameFrame extends JFrame {
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         // --- full screen with OS bar ---
-        setResizable(false);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
@@ -85,7 +84,7 @@ public abstract class BaseGameFrame extends JFrame {
 
         JPanel root = new JPanel();
         root.setBackground(new Color(12, 12, 20, 240));
-        // ✅ use dynamic accent
+        // use dynamic accent
         root.setBorder(BorderFactory.createLineBorder(UIStyles.ACCENT, 3));
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         dialog.setContentPane(root);
@@ -94,7 +93,7 @@ public abstract class BaseGameFrame extends JFrame {
 
         JLabel msg = new JLabel("Are you sure you want to exit the game?");
         msg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        // ✅ use dynamic accent
+        // use dynamic accent
         msg.setForeground(UIStyles.ACCENT);
         msg.setFont(new Font("Segoe UI", Font.BOLD, 20));
         root.add(msg);
@@ -203,7 +202,7 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     private void initToastUI() {
-        // ✅ dynamic accent
+        //  dynamic accent
         popupLabel.setForeground(UIStyles.ACCENT);
         popupLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         popupLabel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
@@ -221,7 +220,7 @@ public abstract class BaseGameFrame extends JFrame {
                 g2.setColor(new Color(0, 0, 0, 185));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 22, 22);
 
-                // ✅ accent border (dynamic)
+                //  accent border (dynamic)
                 Color a = UIStyles.ACCENT;
                 g2.setStroke(new BasicStroke(3f));
                 g2.setColor(new Color(a.getRed(), a.getGreen(), a.getBlue(), 200));
@@ -245,13 +244,13 @@ public abstract class BaseGameFrame extends JFrame {
 
         private final Color baseFill  = new Color(20, 24, 32, 235);
         private final Color hoverFill = new Color(40, 44, 54, 245);
-        private final int radius = 65;
+        private final int radius = 20;
 
         public RoundedButton(String text, int width, int height, int fontSize) {
             super(text);
 
             setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-            // ✅ initial; paintComponent keeps it synced anyway
+            // initial; paintComponent keeps it synced anyway
             setForeground(UIStyles.ACCENT);
 
             setFocusPainted(false);
@@ -282,7 +281,7 @@ public abstract class BaseGameFrame extends JFrame {
             g2.setColor(fill);
             g2.fillRoundRect(0, 0, w, h, radius, radius);
 
-            // ✅ dynamic accent
+            //  dynamic accent
             Color accent = UIStyles.ACCENT;
 
             g2.setStroke(new BasicStroke(4f));
