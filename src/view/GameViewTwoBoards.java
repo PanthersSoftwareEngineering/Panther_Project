@@ -1,4 +1,5 @@
 package view;
+
 import controller.AppController;
 import controller.MatchController;
 import model.MatchListener;
@@ -9,6 +10,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * GameViewTwoBoards is the main match screen for a 2-player game
@@ -17,76 +20,67 @@ import java.awt.event.MouseEvent;
  * - Show HUD information (names, lives, points, timer, active player, difficulty)
  * - Forward user actions (left/right click) to MatchController
  * - React to model updates using the Observer pattern (MatchListener -> MatchSnapshot)
- * - This view does not compute game logic. It delegates actions to MatchController
- * - UI refresh is driven by snapshots published by the controller/model
  */
 public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, MatchListener {
 
-    /** Controller that holds match logic (reveal/flag/interactions/scoring/turns) */
     private final MatchController ctrl;
-
-    /** App-level controller used for navigation between screens (e.g., end screen, main menu)*/
     private final AppController app;
 
-    // ## HUD Labels ##
-    /** Player names shown above each board. */
     private final JLabel lblP1 = new JLabel();
     private final JLabel lblP2 = new JLabel();
 
-    /** HUD values: lives, points, time, active player, and difficulty */
+    // NOTE: we keep lblLives but we won't use it directly in the HUD anymore.
     private final JLabel lblLives  = new JLabel();
     private final JLabel lblPoints = new JLabel();
     private final JLabel lblTimer  = new JLabel();
     private final JLabel lblActive = new JLabel();
     private final JLabel lblDifficulty = new JLabel();
 
-    // ## ACTIVE chips ##
-    /** Small badge that indicates which board/player is currently active (turn-based) */
     private final JLabel chipP1Active = new JLabel("ACTIVE", SwingConstants.CENTER);
     private final JLabel chipP2Active = new JLabel("ACTIVE", SwingConstants.CENTER);
 
-    // ## Board containers ##
-    /** Board panels (each contains a grid of CellButton components) */
     private final JPanel board1 = new JPanel();
     private final JPanel board2 = new JPanel();
 
-    /** Buttons grids: btn1 for Player 1 board, btn2 for Player 2 board */
     private CellButton[][] btn1, btn2;
 
-    // ## Timers and state ##
-    /** Swing timer used for updating the "Time" label every second */
     private Timer timer;
-
-    /** Prevents running the end-sequence twice when match finished snapshot arrives multiple times */
     private boolean endSequenceStarted = false;
 
-    /**
-     * Constructs the view, registers it as an observer, and builds the full UI
-     */
+    // -------------------------
+    // Hearts UI (unchanged)
+    // -------------------------
+    private static final int MAX_LIVES_UI = 10;
+    private final JLabel lblLivesTitle = new JLabel("Lives:");
+    private final HeartsPanel heartsPanel = new HeartsPanel(MAX_LIVES_UI, MAX_LIVES_UI);
+    private int lastLivesSeen = MAX_LIVES_UI;
+
+    // -------------------------
+    // NEW: Mine explosion state
+    // -------------------------
+    private String[][] prevG1 = null;
+    private String[][] prevG2 = null;
+
+    private boolean lossBombCascadeStarted = false;
+    private Timer bombCascadeTimer = null;
+
     public GameViewTwoBoards(MatchController ctrl, AppController app) {
         super(app, "Minesweeper - Match");
         this.ctrl = ctrl;
         this.app  = app;
 
-        // The controller will use this QuestionUI when it needs to ask the player a question
         ctrl.setQuestionUI(this);
-
-        // Observer pattern: this view listens to match changes via snapshots
         ctrl.addMatchListener(this);
 
-        // ## Background ##
         BackgroundPanel bg = new BackgroundPanel(GameAssets.MATCH_BACKGROUND);
         bg.setLayout(new BorderLayout(8, 8));
         setContentPane(bg);
 
-        // Enables toast messages to appear above all UI components
         installToastLayer();
 
-        // ## HUD (top area) ###
         JPanel hud = UIStyles.translucentPanel(new BorderLayout(), UIStyles.HUD_PANEL_BG);
         hud.setBorder(UIStyles.pad(12, 16, 12, 16));
 
-        // Difficulty label on top-left
         UIStyles.styleTitle(lblDifficulty);
         lblDifficulty.setHorizontalAlignment(SwingConstants.LEFT);
         lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
@@ -95,37 +89,64 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         row1.setOpaque(false);
         row1.add(lblDifficulty, BorderLayout.WEST);
 
-        // Style HUD labels consistently (font, color, etc.)
         UIStyles.styleHudLabel(lblLives);
         UIStyles.styleHudLabel(lblPoints);
         UIStyles.styleHudLabel(lblTimer);
         UIStyles.styleHudLabel(lblActive);
 
-        // Back button returns to main menu and unregisters listener to prevent memory leaks
+        UIStyles.styleHudLabel(lblLivesTitle);
+
+        JPanel livesHud = new JPanel();
+        livesHud.setOpaque(false);
+        livesHud.setLayout(new BoxLayout(livesHud, BoxLayout.X_AXIS));
+        livesHud.add(lblLivesTitle);
+        livesHud.add(Box.createHorizontalStrut(10));
+        livesHud.add(heartsPanel);
+
         BaseGameFrame.RoundedButton back =
                 new BaseGameFrame.RoundedButton("Back to Main", 260, 64, 22);
 
         back.addActionListener(e -> {
-            // Stop the timer so it won't continue firing after closing the window
             if (timer != null) timer.stop();
-
-            // Unregister as observer to avoid stale listeners / leaks
             ctrl.removeMatchListener(this);
+
+            // stop cascade timer if running
+            if (bombCascadeTimer != null) bombCascadeTimer.stop();
 
             dispose();
             if (app != null) app.showMainMenu();
         });
 
-        // Second HUD row: lives, points, timer, active player, and the back button
-        JPanel row2 = new JPanel(new GridLayout(1, 5, 14, 0));
+        // Second HUD row: lives(hearts), points, timer, active player, and the back button
+        JPanel row2 = new JPanel(new GridBagLayout());
         row2.setOpaque(false);
-        row2.add(lblLives);
-        row2.add(lblPoints);
-        row2.add(lblTimer);
-        row2.add(lblActive);
-        row2.add(back);
 
-        // Stack HUD rows vertically
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.gridy = 0;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.insets = new Insets(0, 0, 0, 14);
+
+        gc.gridx = 0;
+        gc.weightx = 2.5;
+        row2.add(livesHud, gc);
+
+        gc.gridx = 1;
+        gc.weightx = 1.0;
+        row2.add(lblPoints, gc);
+
+        gc.gridx = 2;
+        gc.weightx = 1.0;
+        row2.add(lblTimer, gc);
+
+        gc.gridx = 3;
+        gc.weightx = 1.0;
+        row2.add(lblActive, gc);
+
+        gc.gridx = 4;
+        gc.weightx = 0.0;
+        gc.insets = new Insets(0, 0, 0, 0);
+        row2.add(back, gc);
+
         JPanel hudInner = new JPanel();
         hudInner.setOpaque(false);
         hudInner.setLayout(new BoxLayout(hudInner, BoxLayout.Y_AXIS));
@@ -135,7 +156,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         hud.add(hudInner, BorderLayout.CENTER);
 
-        // Wrapper for consistent spacing from the window edges
         JPanel topWrap = new JPanel(new BorderLayout());
         topWrap.setOpaque(false);
         topWrap.setBorder(UIStyles.pad(8, 8, 0, 8));
@@ -143,7 +163,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         bg.add(topWrap, BorderLayout.NORTH);
 
-        // ## Board headers (names + ACTIVE chip) ##
         lblP1.setHorizontalAlignment(SwingConstants.CENTER);
         lblP2.setHorizontalAlignment(SwingConstants.CENTER);
         UIStyles.styleTitle(lblP1);
@@ -154,7 +173,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         left.setOpaque(false);
         right.setOpaque(false);
 
-        // ACTIVE chips styling (background color updated in refreshFromSnapshot)
         chipP1Active.setOpaque(true);
         chipP1Active.setForeground(UIStyles.CHIP_TEXT);
         chipP1Active.setFont(UIStyles.HUD_FONT_SMALL);
@@ -165,7 +183,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         chipP2Active.setFont(UIStyles.HUD_FONT_SMALL);
         chipP2Active.setBorder(UIStyles.pad(4, 10, 4, 10));
 
-        // Header panels: player name + ACTIVE badge next to it
         JPanel head1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 6));
         head1.setOpaque(false);
         head1.add(lblP1);
@@ -179,7 +196,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         left.add(head1, BorderLayout.NORTH);
         right.add(head2, BorderLayout.NORTH);
 
-        // Borders used to visually separate each board
         board1.setBorder(BorderFactory.createLineBorder(new Color(0, 120, 215), 2));
         board2.setBorder(BorderFactory.createLineBorder(new Color(46, 139, 87), 2));
         board1.setOpaque(false);
@@ -188,7 +204,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         left.add(board1, BorderLayout.CENTER);
         right.add(board2, BorderLayout.CENTER);
 
-        // Place boards side-by-side with padding/gap
         JPanel both = new JPanel(new GridLayout(1, 2, 8, 8));
         both.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         both.setOpaque(false);
@@ -197,18 +212,14 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         bg.add(both, BorderLayout.CENTER);
 
-        // Build the grid of buttons for each board once (listeners delegate to controller)
         buildBoards();
 
-        // ## Timer ##
-        // Only updates the clock + difficulty label (UI refresh of board comes from snapshots)
         timer = new Timer(1000, e -> {
             lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
             lblDifficulty.setText("Difficulty: " + ctrl.getDiff());
         });
         timer.start();
 
-        // Make the match view fullscreen and fixed-size
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen.width, screen.height);
         setLocationRelativeTo(null);
@@ -216,33 +227,19 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         setVisible(true);
     }
 
-    // ## Observer callback ##
-
-    /**
-     * Called by the controller/model whenever the match state changes.
-     * We update the UI based on the snapshot, always on the Swing EDT.
-     */
     @Override
     public void onMatchChanged(MatchSnapshot s) {
-        // Ensure UI changes happen on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             refreshFromSnapshot(s);
             endCheck(s);
         });
     }
 
-    // ## Board building ##
-
-    /**
-     * Creates the button grids for both players and attaches mouse listeners.
-     * Each listener only calls controller methods (no game logic in the view).
-     */
     private void buildBoards() {
         int R = ctrl.rows(), C = ctrl.cols();
         btn1 = new CellButton[R][C];
         btn2 = new CellButton[R][C];
 
-        // Grid layout for the boards
         board1.setLayout(new GridLayout(R, C, 6, 6));
         board2.setLayout(new GridLayout(R, C, 6, 6));
         board1.removeAll();
@@ -252,17 +249,13 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
 
         for (int r = 0; r < R; r++) {
             for (int c = 0; c < C; c++) {
-
-                // Default appearance: hidden cells show a dot placeholder
                 CellButton a = new CellButton("·", CellStyle.P1_BASE);
                 CellButton b = new CellButton("·", CellStyle.P2_BASE);
                 a.setPreferredSize(cellSize);
                 b.setPreferredSize(cellSize);
 
-                // Capture coordinates for the listener closure
                 final int rr = r, cc = c;
 
-                // Player 1 board click: only works when Player 1 is active
                 a.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
@@ -271,7 +264,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
                     }
                 });
 
-                // Player 2 board click: only works when Player 2 is active
                 b.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
@@ -280,7 +272,6 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
                     }
                 });
 
-                // Store references for later UI updates from snapshots
                 btn1[r][c] = a;
                 btn2[r][c] = b;
 
@@ -289,97 +280,74 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
             }
         }
 
-        // Rebuild UI layout after adding components
         board1.revalidate();
         board2.revalidate();
         board1.repaint();
         board2.repaint();
     }
 
-    // ## Click handling ##
-
-    /**
-     * Handles a click on a specific cell and delegates to the controller.
-     * This method enforces UI-level rules (like "don't reveal flagged cell").
-     *
-     * @param playerIdx which board was clicked (0 = P1, 1 = P2)
-     * @param r row index
-     * @param c col index
-     * @param e original mouse event (for left/right click detection)
-     */
     private void handleClick(int playerIdx, int r, int c, MouseEvent e) {
-
-        // Block interaction for cells already consumed (question/surprise already used)
         if (ctrl.isQuestionUsed(playerIdx, r, c) || ctrl.isSurpriseUsed(playerIdx, r, c)) {
             Toast.show(this, "Cell Already Chosen!");
             return;
         }
 
-        // Right click toggles a flag (controller handles scoring + end turn)
         if (SwingUtilities.isRightMouseButton(e)) {
             ctrl.toggleFlag(playerIdx, r, c);
-            return; // Snapshot will arrive and refresh the UI
+            return;
         }
 
-        // UX rule: left click should not auto-remove a flag
-        // Player must explicitly right-click to remove the flag first
         if (ctrl.isFlagged(playerIdx, r, c)) {
             Toast.show(this, "Remove flag first (Right-click) to reveal.");
             return;
         }
 
-        // Attempt to interact with pending Question/Surprise cell (if this cell is pending)
         if (ctrl.tryInteract(playerIdx, r, c)) {
             showLastInteractionToast();
             return;
         }
 
-        // Normal reveal (only if cell is still hidden)
         if (!ctrl.isRevealed(playerIdx, r, c)) {
             ctrl.reveal(r, c);
         }
 
-        // If interaction produced a message (surprise/question)
         showLastInteractionToast();
     }
 
-    /**
-     * Shows the latest interaction message from the controller, including:
-     * - activation cost
-     * - effect points/lives
-     * - net change
-     * This is a UI-only feature: controller stores the last interaction summary
-     */
     private void showLastInteractionToast() {
         String msg = ctrl.consumeLastInteractionMessage();
         if (msg == null) return;
 
         String details =
                 " cost:" + fmtDelta(-ctrl.getLastActivationCost(), "pts") +
-                " effect:" + fmtDelta(ctrl.getLastEffectPoints(), "pts") + "," + fmtDelta(ctrl.getLastEffectLives(), "❤") +
-                " net:" + fmtDelta(ctrl.getLastNetPoints(), "pts") + "," + fmtDelta(ctrl.getLastNetLives(), "❤");
+                        " effect:" + fmtDelta(ctrl.getLastEffectPoints(), "pts") + "," + fmtDelta(ctrl.getLastEffectLives(), "❤") +
+                        " net:" + fmtDelta(ctrl.getLastNetPoints(), "pts") + "," + fmtDelta(ctrl.getLastNetLives(), "❤");
 
         Toast.show(this, msg + "  " + details);
     }
 
-    /** Formats deltas consistently for toast messages (+ / - / 0) */
     private String fmtDelta(int v, String unit) {
         if (v > 0) return "+" + v + " " + unit;
         if (v < 0) return v + " " + unit;
         return "0 " + unit;
     }
 
-    // Snapshot =>maening UI refresh 
-
-     // Updates all UI components based on the snapshot.This keeps the view fully synchronized with the model state
     private void refreshFromSnapshot(MatchSnapshot s) {
         boolean p1Active = (s.activeIndex() == 0);
         boolean finished = s.finished();
 
-        // Update HUD
         lblP1.setText(s.p1());
         lblP2.setText(s.p2());
+
         lblLives.setText("Lives: " + s.lives());
+
+        // hearts update (unchanged)
+        int newLives = s.lives();
+        if (newLives != lastLivesSeen) {
+            heartsPanel.setLives(newLives);
+            lastLivesSeen = newLives;
+        }
+
         lblPoints.setText("Points: " + s.points());
         lblTimer.setText("Time: " + UIStyles.formatTimeMMSS(ctrl.getElapsedSeconds()));
         lblActive.setText("Active: " + (p1Active ? s.p1() : s.p2()));
@@ -393,47 +361,59 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         String[][] g1 = s.boardP1();
         String[][] g2 = s.boardP2();
 
-        //Refresh Player 1 board buttons 
+        // ---- Player 1 board refresh + mine explosions ----
         for (int r = 0; r < g1.length; r++) {
             for (int c = 0; c < g1[0].length; c++) {
                 CellButton btn = btn1[r][c];
                 String sym = g1[r][c];
                 btn.setText(sym);
-
-                // Check if the cell has been fully processed (answered or operated)
-                boolean isUsed = ctrl.isQuestionUsed(0, r, c) || ctrl.isSurpriseUsed(0, r, c);
                 
-                // A cell is "Pending" if it shows a Question/Gift icon but hasn't been used/activated yet
-                // We check for "?" and "❓" to be safe with different character encodings
+
+                // Trigger explosion if mine becomes visible now (transition)
+                String old = (prevG1 == null) ? null : prevG1[r][c];
+                if (isMineSymbol(sym) && !isMineSymbol(old)) {
+                    btn.startExplosion();
+                }
+                if (isSurpriseSymbol(sym) && !isSurpriseSymbol(old)) {
+                    btn.startSparkle();
+                }
+
+                boolean isUsed = ctrl.isQuestionUsed(0, r, c) || ctrl.isSurpriseUsed(0, r, c);
+
                 boolean isQuestion = sym.equals("❓") || sym.equals("?");
                 boolean isSurprise = sym.equals("🎁");
                 boolean isSpecialPending = (isQuestion || isSurprise) && !isUsed;
 
                 if (isUsed) {
-                    // 1. If used -> Dark Gray "USED" tiles style
                     btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
                 } else if (!sym.equals("·") && !isSpecialPending) {
-                    // 2. If revealed and NOT a pending special -> Lighter "Revealed" color
-                    btn.setBaseColor(new Color(50, 65, 120)); 
+                    btn.setBaseColor(new Color(50, 65, 120));
                     btn.setForeground(CellStyle.textColorForSymbol(sym));
                 } else {
-                    // 3. Hidden cells OR Revealed but NOT yet activated specials -> Original Base Color
                     btn.setBaseColor(CellStyle.colorForSymbol(sym, 0));
                     btn.setForeground(CellStyle.textColorForSymbol(sym));
                 }
             }
         }
 
-        //Refresh Player 2 board buttons
+        // ---- Player 2 board refresh + mine explosions ----
         for (int r = 0; r < g2.length; r++) {
             for (int c = 0; c < g2[0].length; c++) {
                 CellButton btn = btn2[r][c];
                 String sym = g2[r][c];
                 btn.setText(sym);
 
+                String old = (prevG2 == null) ? null : prevG2[r][c];
+                if (isMineSymbol(sym) && !isMineSymbol(old)) {
+                    btn.startExplosion();
+                }
+                if (isSurpriseSymbol(sym) && !isSurpriseSymbol(old)) {
+                    btn.startSparkle();
+                }
+
                 boolean isUsed = ctrl.isQuestionUsed(1, r, c) || ctrl.isSurpriseUsed(1, r, c);
-                
+
                 boolean isQuestion = sym.equals("❓") || sym.equals("?");
                 boolean isSurprise = sym.equals("🎁");
                 boolean isSpecialPending = (isQuestion || isSurprise) && !isUsed;
@@ -442,8 +422,7 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
                     btn.setBaseColor(CellStyle.USED);
                     btn.setForeground(Color.WHITE);
                 } else if (!sym.equals("·") && !isSpecialPending) {
-                    // Lighter green for Player 2
-                    btn.setBaseColor(new Color(60, 110, 80)); 
+                    btn.setBaseColor(new Color(60, 110, 80));
                     btn.setForeground(CellStyle.textColorForSymbol(sym));
                 } else {
                     btn.setBaseColor(CellStyle.colorForSymbol(sym, 1));
@@ -452,15 +431,77 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
             }
         }
 
+        // Save current snapshot grids for transition detection next time
+        prevG1 = copyGrid(g1);
+        prevG2 = copyGrid(g2);
+
         setPanelEnabled(board1, finished || p1Active);
         setPanelEnabled(board2, finished || !p1Active);
+
+        // If loss: explode all bombs one after another
+        if (finished && s.lives() == 0 && !lossBombCascadeStarted) {
+            lossBombCascadeStarted = true;
+            startLossBombCascade(g1, g2);
+        }
+
         repaint();
     }
 
-    /**
-     * Recursively enables/disables an entire container and all its children
-     * Used to lock the inactive player's board during the other player's turn
-     */
+    private void startLossBombCascade(String[][] g1, String[][] g2) {
+        List<CellButton> bombs = new ArrayList<>();
+
+        for (int r = 0; r < g1.length; r++) {
+            for (int c = 0; c < g1[0].length; c++) {
+                if (isMineSymbol(g1[r][c])) bombs.add(btn1[r][c]);
+            }
+        }
+        for (int r = 0; r < g2.length; r++) {
+            for (int c = 0; c < g2[0].length; c++) {
+                if (isMineSymbol(g2[r][c])) bombs.add(btn2[r][c]);
+            }
+        }
+
+        if (bombs.isEmpty()) return;
+
+        final int[] idx = {0};
+
+        if (bombCascadeTimer != null) bombCascadeTimer.stop();
+
+        bombCascadeTimer = new Timer(120, e -> {
+            if (idx[0] >= bombs.size()) {
+                bombCascadeTimer.stop();
+                return;
+            }
+            bombs.get(idx[0]).startExplosion();
+            idx[0]++;
+        });
+        bombCascadeTimer.setRepeats(true);
+        bombCascadeTimer.start();
+    }
+
+    private static boolean isMineSymbol(String sym) {
+        if (sym == null) return false;
+        String s = sym.trim();
+        // Your mine symbol in the UI is usually "💣"
+        // Extra options just in case
+        return s.equals("💣") || s.equalsIgnoreCase("M") || s.equals("*");
+    }
+    
+    private static boolean isSurpriseSymbol(String sym) {
+        if (sym == null) return false;
+        return sym.trim().equals("🎁");
+    }
+
+    private static String[][] copyGrid(String[][] g) {
+        if (g == null) return null;
+        String[][] out = new String[g.length][];
+        for (int i = 0; i < g.length; i++) {
+            out[i] = new String[g[i].length];
+            System.arraycopy(g[i], 0, out[i], 0, g[i].length);
+        }
+        return out;
+    }
+
     private static void setPanelEnabled(Container p, boolean enabled) {
         for (Component c : p.getComponents()) {
             c.setEnabled(enabled);
@@ -468,22 +509,21 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         }
     }
 
-    // ## End-of-game handling ##
-
-    //Checks if the match finished. If finished: stops timer, waits briefly (2s), then opens EndScreen
     private void endCheck(MatchSnapshot s) {
         if (!s.finished()) return;
-        if (endSequenceStarted) return; // guard against duplicate triggers
+        if (endSequenceStarted) return;
         endSequenceStarted = true;
 
         if (timer != null) timer.stop();
 
-        // Small delay so the player can see the final board state before switching screens
         Timer delay = new Timer(2_000, e -> {
             ctrl.removeMatchListener(this);
+
+            // stop cascade timer if running
+            if (bombCascadeTimer != null) bombCascadeTimer.stop();
+
             dispose();
 
-            // Last record is produced by controller when the match ends
             SysData.GameRecord rec = ctrl.getLastRecord();
             if (app != null && rec != null) {
                 app.openEndScreen(rec);
@@ -493,41 +533,22 @@ public class GameViewTwoBoards extends BaseGameFrame implements QuestionUI, Matc
         delay.start();
     }
 
-    // ## QuestionUI implementation ##
-
-    /**
-     * Called by controller when a Question cell is activated.
-     * Shows a dialog and returns the chosen answer index
-     * Return contract:
-     * - 0..3 = selected option index
-     * - (implementation-dependent) negative can mean "cancel"
-     */
     @Override
     public int ask(QuestionDTO q) {
         JFrame owner = (JFrame) SwingUtilities.getWindowAncestor(this);
-
-        // Correct index is provided by controller so the dialog can mark the correct answer if needed
         int correct = ctrl.getLastQuestionCorrectIndex();
-
         QuestionDialog dialog = new QuestionDialog(owner, q, correct);
         return dialog.showDialog();
     }
 
-    /**
-     * Optional confirmation step before activating a Question/Surprise cell
-     * This allows the user to avoid paying the activation cost
-     */
     @Override
     public boolean confirmActivation(String kindLabel, int costPoints) {
-
         String msg =
                 "Do you want to activate this " + kindLabel + " cell?\n" +
-                "Activation cost: " + costPoints + " points\n" +
-                "After activation, you may gain/lose points and hearts.";
+                        "Activation cost: " + costPoints + " points\n" +
+                        "After activation, you may gain/lose points and hearts.";
 
         int res = StyledConfirmDialog.show(this, msg, JOptionPane.YES_NO_OPTION);
-
-        // StyledConfirmDialog returns OK/CANCEL
         return res == JOptionPane.OK_OPTION;
     }
 
