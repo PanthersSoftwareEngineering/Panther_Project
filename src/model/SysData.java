@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.awt.Color;
 
 public class SysData {
 
@@ -18,6 +19,7 @@ public class SysData {
     private SysData() {
         loadQuestions();
         loadHistory();
+        loadTheme();
     }
 
     // ============================================================
@@ -235,6 +237,46 @@ public class SysData {
         out.add(cur.toString());
         return out.toArray(new String[0]);
     }
+
+
+    private static Path themePath() {
+        try {
+            Path jarDir = Paths.get(
+                    SysData.class.getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI()
+            ).getParent();
+            return jarDir.resolve("theme.properties");
+        } catch (Exception e) {
+            return Paths.get("theme.properties");
+        }
+    }
+
+    private void loadTheme() {
+        Path p = themePath();
+        if (!Files.exists(p)) return;
+
+        Properties props = new Properties();
+        try (InputStream in = Files.newInputStream(p)) {
+            props.load(in);
+            String v = props.getProperty("accentRGB");
+            if (v != null) accentRGB = Integer.parseInt(v.trim());
+        } catch (Exception ignored) {}
+    }
+
+    private void saveTheme() {
+        Properties props = new Properties();
+        props.setProperty("accentRGB", String.valueOf(accentRGB));
+
+        try (OutputStream out = Files.newOutputStream(themePath(),
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            props.store(out, "Minesweeper Theme");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // ============================================================
     // Load Questions
@@ -464,4 +506,19 @@ public class SysData {
         saveAllQuestions();
         invalidateDecks();
     }
+    
+    
+//Color for the system
+    private int accentRGB = new Color(255, 204, 0).getRGB(); // default gold
+
+    public Color getAccentColor() {
+        return new Color(accentRGB, true);
+    }
+
+    public void setAccentColor(Color c) {
+        if (c == null) return;
+        accentRGB = c.getRGB();
+        saveTheme(); 
+    }
+
 }

@@ -26,7 +26,6 @@ public class MatchController {
     // ---------- Current session state ----------
     private Match match;
     private SysData sys;
-    private AppController app;
     private QuestionUI questionUI;
 
     private final Random rnd = new Random();
@@ -131,7 +130,6 @@ public class MatchController {
     public synchronized void init(Match match, SysData sys, AppController app){
         this.match = match;
         this.sys   = sys;
-        this.app   = app;
         this.questionUI = null;
 
         pendingP1.clear();

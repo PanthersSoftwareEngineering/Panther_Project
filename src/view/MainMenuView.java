@@ -7,8 +7,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Main menu – uses BaseGameFrame for common behavior
- * Background image comes from GameAssets.MAIN_BACKGROUND
+ * Main menu screen.
+ * Uses BaseGameFrame for consistent window behavior and styling.
  */
 public class MainMenuView extends BaseGameFrame {
 
@@ -18,29 +18,25 @@ public class MainMenuView extends BaseGameFrame {
         // ===== background =====
         Image bgImage = GameAssets.MAIN_BACKGROUND;
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
-        bgPanel.setLayout(new GridBagLayout());
+        bgPanel.setLayout(new GridBagLayout()); 
         setContentPane(bgPanel);
 
-        // ===== main vertical panel  =====
+        // ===== main vertical column (title + buttons) =====
         JPanel mainPanel = new JPanel();
         mainPanel.setOpaque(false);
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        boolean hasBackgroundImage = (bgImage != null);
+        // ===== Title =====
+        JLabel title = new JLabel("MineSweeper", SwingConstants.CENTER);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setForeground(UIStyles.ACCENT);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 100));
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(title);
 
-        if (!hasBackgroundImage) {
-            // No image -> draw the "MineSweeper" title as text
-            mainPanel.add(Box.createVerticalStrut(40));
-            JLabel title = new JLabel("MineSweeper");
-            title.setAlignmentX(Component.CENTER_ALIGNMENT);
-            title.setForeground(new Color(255, 204, 0));
-            title.setFont(new Font("Segoe UI", Font.BOLD, 100));
-            mainPanel.add(title);
-            mainPanel.add(Box.createVerticalStrut(80));
-        } else {
-            // Title already inside the image -> just push buttons down
-            mainPanel.add(Box.createVerticalStrut(140));
-        }
+        // Gap between title and buttons
+        mainPanel.add(Box.createVerticalStrut(70));
 
         // ===== buttons column =====
         JPanel buttonsPanel = new JPanel();
@@ -54,7 +50,14 @@ public class MainMenuView extends BaseGameFrame {
         RoundedButton newGameBtn = new RoundedButton("New Game", 700, 90, 50);
         RoundedButton historyBtn = new RoundedButton("Games History", 700, 90, 50);
         RoundedButton qmanBtn    = new RoundedButton("Questions Management", 700, 90, 50);
+        RoundedButton personalizationBtn = new RoundedButton("Personalization", 700, 90, 50);
         RoundedButton exitBtn    = new RoundedButton("Exit", 700, 90, 50);
+
+        newGameBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        historyBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        qmanBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        personalizationBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        exitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         buttonsPanel.add(newGameBtn);
         buttonsPanel.add(Box.createVerticalStrut(gap));
@@ -62,12 +65,19 @@ public class MainMenuView extends BaseGameFrame {
         buttonsPanel.add(Box.createVerticalStrut(gap));
         buttonsPanel.add(qmanBtn);
         buttonsPanel.add(Box.createVerticalStrut(gap));
+        buttonsPanel.add(personalizationBtn);
+        buttonsPanel.add(Box.createVerticalStrut(gap));
         buttonsPanel.add(exitBtn);
 
         mainPanel.add(buttonsPanel);
-        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(Box.createVerticalStrut(30));
 
-        bgPanel.add(mainPanel, new GridBagConstraints());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.NORTH; 
+        gbc.insets = new Insets(-150, 0, 0, 0);  
+        bgPanel.add(mainPanel, gbc);
 
         // ===== actions =====
         newGameBtn.addActionListener(e -> {
@@ -82,6 +92,11 @@ public class MainMenuView extends BaseGameFrame {
 
         qmanBtn.addActionListener(e -> {
             app.openQuestionManager();
+            dispose();
+        });
+
+        personalizationBtn.addActionListener(e -> {
+            app.openPersonalization();
             dispose();
         });
 
@@ -101,7 +116,6 @@ public class MainMenuView extends BaseGameFrame {
             super.paintComponent(g);
 
             if (bg == null) {
-                // gradient fallback
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setPaint(new GradientPaint(
                         0, 0, new Color(12, 12, 20),
@@ -115,10 +129,8 @@ public class MainMenuView extends BaseGameFrame {
             int imgH = bg.getHeight(null);
             int panelW = getWidth();
             int panelH = getHeight();
-
             if (imgW <= 0 || imgH <= 0) return;
 
-            // cover screen (like wallpaper)
             double scale = Math.max((double) panelW / imgW, (double) panelH / imgH);
             int drawW = (int) (imgW * scale);
             int drawH = (int) (imgH * scale);

@@ -12,55 +12,45 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Displays the game history table.
- * Uses the same visual style as other screens (background image, rounded card,styled JTable, and a "Back to Main" button)
- */
+ * HistoryView
+ * ===========
+ * Displays the saved match history 
+* */
 public class HistoryView extends BaseGameFrame {
 
-    /* Reference to the shared system data */
+    private final JTable table;
+    private final HistoryTableModel model;
     private final SysData sys;
 
-    /* JTable that displays the history records */
-    private final JTable table;
-
-    /* Table model backing the history table */
-    private final HistoryTableModel model;
-
     /**
-     * Creates the Game History screen
+     * Creates the Game History screen.
      */
     public HistoryView(SysData sys) {
         super(AppController.getInstance(), "Game History");
         this.sys = sys;
 
         // ===== Background =====
-        // Uses a background image specific to the History screen
         Image bgImage = GameAssets.HISTORY_BACKGROUND;
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new GridBagLayout());
         setContentPane(bgPanel);
 
-        // ===== Main vertical container =====
-        // Holds title, spacing, and the history card
-        JPanel mainPanel = new JPanel();
-        mainPanel.setOpaque(false);
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-
-        // Top spacing (keeps content away from top edge)
-        mainPanel.add(Box.createVerticalStrut(70));
-
-        // Title label (text is transparent because the title is embedded in the background image)
-        JLabel title = new JLabel("Game History");
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        title.setForeground(new Color(0,0,0,0)); // invisible text
+        // ===== Title  =====
+        JLabel title = new JLabel("Game History", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 60));
-        mainPanel.add(title);
+        title.setForeground(UIStyles.ACCENT);
 
-        // Extra spacing between title area and table card
-        mainPanel.add(Box.createVerticalStrut(60));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;
 
-        // ===== Card panel =====
-        // Semi-transparent rounded panel that contains the table and button
+        gbc.gridy = 0;
+        gbc.insets = new Insets(40, 0, 20, 0);
+        gbc.fill = GridBagConstraints.NONE;
+        bgPanel.add(title, gbc);
+
+        // ===== Card panel  =====
         JPanel card = new JPanel(new BorderLayout(10, 10)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -68,60 +58,55 @@ public class HistoryView extends BaseGameFrame {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(0, 0, 0, 180)); // semi-transparent black
+                g2.setColor(new Color(0, 0, 0, 180)); 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
                 g2.dispose();
             }
         };
         card.setOpaque(false);
         card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        card.setPreferredSize(new Dimension(1150, 600)); // fixed card size
+        card.setPreferredSize(new Dimension(1150, 650));
 
-        // ===== History table =====
-        // Model pulls data from SysData.history()
+        // ===== Table =====
         model = new HistoryTableModel(sys.history());
         table = new JTable(model);
         styleTable(table);
 
-        // Scroll pane wrapping the table
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-        scroll.setPreferredSize(new Dimension(1100, 470));
+        scroll.getViewport().setOpaque(true);
+        scroll.getViewport().setBackground(new Color(15, 18, 40));
+        scroll.setPreferredSize(new Dimension(1100, 520));
 
         card.add(scroll, BorderLayout.CENTER);
 
-        // ===== Bottom bar with Back button =====
+        // ===== Bottom bar =====
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomBar.setOpaque(false);
 
-        RoundedButton backBtn = new RoundedButton("Back to Main", 400, 80, 40);
-        bottomBar.add(backBtn);
-
-        card.add(bottomBar, BorderLayout.SOUTH);
-
-        // Add card to main panel
-        mainPanel.add(card);
-        mainPanel.add(Box.createVerticalGlue());
-
-        // Center main panel on background
-        bgPanel.add(mainPanel, new GridBagConstraints());
-
-        // Back button action
+        RoundedButton backBtn = new RoundedButton("Back to Main", 350, 75, 32);
         backBtn.addActionListener(e -> {
             dispose();
             app.showMainMenu();
         });
+
+        bottomBar.add(backBtn);
+        card.add(bottomBar, BorderLayout.SOUTH);
+
+        // Place card in the center under the title
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 40, 50, 40);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weighty = 1.0;
+        bgPanel.add(card, gbc);
     }
 
     /**
-     * Applies visual styling to the history JTable.
-     * Includes colors, fonts, row height, header styling, and row striping.
+     * Applies visual styling to the history JTable (fonts, colors, header, row striping).
      */
     private void styleTable(JTable table) {
         table.setFillsViewportHeight(true);
-        table.setRowHeight(32);
+        table.setRowHeight(34);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 16));
 
         table.setForeground(Color.WHITE);
@@ -131,16 +116,14 @@ public class HistoryView extends BaseGameFrame {
         table.setShowVerticalLines(false);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        // Header styling
         JTableHeader header = table.getTableHeader();
         header.setReorderingAllowed(false);
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 40));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 44));
         header.setFont(new Font("Segoe UI", Font.BOLD, 16));
         header.setForeground(Color.WHITE);
         header.setBackground(new Color(30, 32, 70));
         ((JComponent) header).setOpaque(true);
 
-        // Custom cell renderer for alternating row colors and selection highlight
         DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
@@ -170,7 +153,7 @@ public class HistoryView extends BaseGameFrame {
     }
 
     /**
-     * Table model that adapts GameRecord objects into table rows and columns
+     * Table model that adapts GameRecord objects into rows and columns.
      */
     private static class HistoryTableModel extends AbstractTableModel {
         private final String[] cols = {
@@ -181,32 +164,32 @@ public class HistoryView extends BaseGameFrame {
 
         private final List<GameRecord> data;
 
-        HistoryTableModel(List<GameRecord> d){
+        HistoryTableModel(List<GameRecord> d) {
             this.data = d;
         }
 
         @Override
-        public int getRowCount(){ return data.size(); }
+        public int getRowCount() { return data.size(); }
 
         @Override
-        public int getColumnCount(){ return cols.length; }
+        public int getColumnCount() { return cols.length; }
 
         @Override
-        public String getColumnName(int c){ return cols[c]; }
+        public String getColumnName(int c) { return cols[c]; }
 
         @Override
-        public Object getValueAt(int row, int col){
+        public Object getValueAt(int row, int col) {
             GameRecord r = data.get(row);
-            return switch(col){
+            return switch (col) {
                 case 0 -> r.p1;
                 case 1 -> r.p2;
                 case 2 -> r.level.name();
                 case 3 -> r.hearts;
                 case 4 -> r.points;
-                //design prettier the won/lost in the table (to be green/red)
-                case 5 -> r.won 
-                ? "<html><div style='white-space:nowrap;'><b style='color:#00FF00;'>Won</b></div></html>" 
-                : "<html><span style='color:#FF4444;'>Lost</span></html>";
+                // Keep the Win/Loss text colored (green/red) 
+                case 5 -> r.won
+                        ? "<html><div style='white-space:nowrap;'><b style='color:#00FF00;'>Won</b></div></html>"
+                        : "<html><span style='color:#FF4444;'>Lost</span></html>";
                 case 6 -> r.timeSec;
                 case 7 -> new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm")
                         .format(new java.util.Date(r.timestamp));
@@ -215,20 +198,24 @@ public class HistoryView extends BaseGameFrame {
         }
 
         @Override
-        public boolean isCellEditable(int r,int c){ return false; }
+        public boolean isCellEditable(int r, int c) { return false; }
     }
 
     /**
-     * Background panel that either draws a scaled background image
-     * or a gradient fallback if the image is missing
+     * Background panel that draws the configured background image scaled to cover the full window.
+     * If the image is missing, a gradient fallback is displayed.
      */
     private static class BackgroundPanel extends JPanel {
         private final Image bg;
-        public BackgroundPanel(Image bg) { this.bg = bg; }
+
+        public BackgroundPanel(Image bg) {
+            this.bg = bg;
+        }
 
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+
             if (bg == null) {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setPaint(new GradientPaint(
@@ -245,7 +232,6 @@ public class HistoryView extends BaseGameFrame {
             int panelH = getHeight();
             if (imgW <= 0 || imgH <= 0) return;
 
-            // Scale image to fully cover the panel (wallpaper-style)
             double scale = Math.max((double) panelW / imgW, (double) panelH / imgH);
             int drawW = (int) (imgW * scale);
             int drawH = (int) (imgH * scale);
