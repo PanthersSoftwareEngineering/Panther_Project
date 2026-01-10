@@ -1,5 +1,5 @@
 package view;
-
+import view.UIStyles;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ public class QuestionDialog extends JDialog {
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
 
                 g2.setStroke(new BasicStroke(3f));
-                g2.setColor(UIStyles.GOLD_TEXT);
+                g2.setColor(UIStyles.ACCENT);
                 g2.drawRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 24, 24);
 
                 g2.dispose();
@@ -45,12 +45,12 @@ public class QuestionDialog extends JDialog {
 
         // ================= Title =================
         JLabel title = new JLabel("Difficulty: " + q.levelLabel());
-        title.setForeground(UIStyles.GOLD_TEXT);
+        title.setForeground(UIStyles.ACCENT);
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
         // ================= Question text =================
         JLabel text = new JLabel("<html><div style='width:480px'>" + q.text() + "</div></html>");
-        text.setForeground(UIStyles.GOLD_TEXT);
+        text.setForeground(UIStyles.ACCENT);
         text.setFont(new Font("Segoe UI", Font.PLAIN, 18));
 
         // ================= Answers =================
@@ -64,7 +64,7 @@ public class QuestionDialog extends JDialog {
             JButton btn = new JButton(letter + ") " + q.options().get(i));
             btn.setFocusPainted(false);
             btn.setFont(UIStyles.HUD_FONT);
-            btn.setForeground(UIStyles.GOLD_TEXT);
+            btn.setForeground(UIStyles.ACCENT);
             btn.setBackground(new Color(60, 60, 60));
             btn.setOpaque(true);
 

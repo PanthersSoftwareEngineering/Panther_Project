@@ -2,84 +2,209 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
+import java.io.*;
 import java.net.URL;
+import java.util.Properties;
 
-
-// Here we save and pre-upload all pictures and gifs so the system will be faster
+/**
+ * GameAssets
+ * - Loads assets from classpath (JAR) or filesystem (IDE).
+ * - Loads animated GIFs as ImageIcon ONLY (no scaling) so they stay animated.
+ */
 public final class GameAssets {
 
-	public static final Image GAME_ICON = loadImage("assets/Icon/bomb2.png");
+    // =====================================================================
+    // ICON
+    // =====================================================================
+    public static final Image GAME_ICON = loadImageAny("assets/Icon/bomb2.png");
 
-	private static Image loadImage(String path) {
-	    try {
-	        // Try loading as Resource first
-	        java.net.URL imgURL = GameAssets.class.getResource(path);
-	        if (imgURL != null) {
-	            return new ImageIcon(imgURL).getImage();
-	        }
+    // =====================================================================
+    // THEME
+    // =====================================================================
+    private static final String THEME_FILE = "theme.properties";
+    private static final String KEY_BG = "backgroundKey"; // BG1/BG2/BG3
+    private static final String BASIC_FILE = "BasicBack.png";
+    private static final String MATCH_FILE = "MatchBack.png";
+    private static final String RECT_FILE  = "RectangleBack.png";
 
-	        // If not found as resource, try loading directly from filesystem
-	        // We remove the leading slash if it exists for filesystem check
-	        String fsPath = path.startsWith("/") ? path.substring(1) : path;
-	        java.io.File file = new java.io.File(fsPath);
-	        
-	        if (file.exists()) {
-	            return new ImageIcon(file.getAbsolutePath()).getImage();
-	        } else {
-	            System.err.println("[DEBUG] File NOT FOUND in Resource or Filesystem: " + fsPath);
-	            return null;
-	        }
-	    } catch (Exception e) {
-	        System.err.println("[DEBUG] Error loading image: " + e.getMessage());
-	        return null;
-	    }
-	}
-	
-    // ---------- Paths ----------
-    public static final String MAIN_BG_PATH =
-            "assets/MainMenuPics/MainMenu.png";
-    
-    public static final String HISTORY_BG_PATH =
-            "assets/HistoryPics/HistoryPic.png";
-
-    public static final String PLAY_BG_PATH =
-            "assets/PlayerViewPics/NewPlayBack.png";
-
-    public static final String END_BG_PATH =
-            "assets/EndGamePics/EndBackground.png";
-
-    public static final String MATCH_BG_PATH =
-            "assets/MatchViewPics/MatchBackground.png";
-
+    // =====================================================================
+    // GIFS 
+    // =====================================================================
     public static final String[] WIN_GIF_PATHS = {
-            "assets/EndGamePics/win1.gif",
-            "assets/EndGamePics/win2.gif",
-            "assets/EndGamePics/win3.gif",
-            "assets/EndGamePics/win4.gif"
+            "assets/EndGameGifs/win1.gif",
+            "assets/EndGameGifs/win2.gif",
+            "assets/EndGameGifs/win3.gif",
+            "assets/EndGameGifs/win4.gif"
     };
 
     public static final String[] LOSE_GIF_PATHS = {
-            "assets/EndGamePics/lose1.gif",
-            "assets/EndGamePics/lose2.gif",
-            "assets/EndGamePics/lose3.gif",
-            "assets/EndGamePics/lose4.gif"
+            "assets/EndGameGifs/lose1.gif",
+            "assets/EndGameGifs/lose2.gif",
+            "assets/EndGameGifs/lose3.gif",
+            "assets/EndGameGifs/lose4.gif"
     };
 
-    // public arrays with the actual pre-loaded GIF icons
     public static final ImageIcon[] WIN_GIFS;
     public static final ImageIcon[] LOSE_GIFS;
 
-    private static final int END_GIF_SIZE = 220;
+    // =====================================================================
+    // BACKGROUNDS 
+    // =====================================================================
+    public static Image MAIN_BACKGROUND;
+    public static Image HISTORY_BACKGROUND;
+    public static Image GAME_BACKGROUND;
+    public static Image MATCH_BACKGROUND;
+    public static Image END_BACKGROUND;
 
-    // static block runs ONCE when GameAssets is first loaded
+    public static Image PERSON_BACKGROUND;
+
+    // =====================================================================
+    // STATIC INIT
+    // =====================================================================
     static {
-        WIN_GIFS  = loadGifArray(WIN_GIF_PATHS, END_GIF_SIZE);
-        LOSE_GIFS = loadGifArray(LOSE_GIF_PATHS, END_GIF_SIZE);
+        // Load GIFs 
+        WIN_GIFS  = loadGifArray(WIN_GIF_PATHS);
+        LOSE_GIFS = loadGifArray(LOSE_GIF_PATHS);
+
+        // Load theme backgrounds 
+        reloadThemeBackgrounds();
     }
 
+    private GameAssets() { }
 
-    private static ImageIcon[] loadGifArray(String[] paths, int size) {
+    // =====================================================================
+    // PUBLIC THEME API
+    // =====================================================================
+
+    /** Read backgroundKey from theme.properties (BG1/BG2/BG3). */
+    public static String loadBackgroundKey() {
+        Properties p = new Properties();
+        try (FileInputStream fis = new FileInputStream(THEME_FILE)) {
+            p.load(fis);
+            String v = p.getProperty(KEY_BG, "BG1");
+            return (v == null || v.trim().isEmpty()) ? "BG1" : v.trim();
+        } catch (Exception ignore) {
+            return "BG1";
+        }
+    }
+
+    /** Save backgroundKey to theme.properties. */
+    public static void saveBackgroundKey(String key) {
+        if (key == null || key.trim().isEmpty()) return;
+
+        Properties p = new Properties();
+        try (FileInputStream fis = new FileInputStream(THEME_FILE)) {
+            p.load(fis);
+        } catch (Exception ignore) { }
+
+        p.setProperty(KEY_BG, key.trim());
+
+        try (FileOutputStream fos = new FileOutputStream(THEME_FILE)) {
+            p.store(fos, "Theme settings");
+        } catch (Exception ex) {
+            System.err.println("[ASSETS] Failed saving theme: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Reload themed backgrounds according to theme.properties.
+     * Call this after saveBackgroundKey(...) to apply immediately.
+     */
+    public static synchronized void reloadThemeBackgrounds() {
+        String key = loadBackgroundKey();       // BG1/BG2/BG3
+        String n = parseThemeNumber(key);       // "1"/"2"/"3"
+        String baseFolder = "assets/Background" + n + "/";
+
+        System.out.println("[ASSETS] Background theme: " + key + " -> " + baseFolder);
+
+        Image basic = loadImageOnce(baseFolder + BASIC_FILE);
+        Image match = loadImageOnce(baseFolder + MATCH_FILE);
+        Image rect  = loadImageOnce(baseFolder + RECT_FILE);
+
+        // Mapping you requested:
+        MAIN_BACKGROUND    = basic;
+        HISTORY_BACKGROUND = basic;
+        GAME_BACKGROUND    = rect;  
+        PERSON_BACKGROUND  = basic;
+        MATCH_BACKGROUND   = match;
+        END_BACKGROUND     = basic;
+
+        // Fallbacks if something missing
+        if (MAIN_BACKGROUND == null) MAIN_BACKGROUND = rect;
+        if (HISTORY_BACKGROUND == null) HISTORY_BACKGROUND = MAIN_BACKGROUND;
+        if (GAME_BACKGROUND == null) GAME_BACKGROUND = MAIN_BACKGROUND;
+        if (PERSON_BACKGROUND == null) PERSON_BACKGROUND = MAIN_BACKGROUND;
+        if (MATCH_BACKGROUND == null) MATCH_BACKGROUND = MAIN_BACKGROUND;
+        if (END_BACKGROUND == null) END_BACKGROUND = MAIN_BACKGROUND;
+    }
+
+    private static String parseThemeNumber(String key) {
+        if (key == null) return "1";
+        key = key.trim().toUpperCase();
+        if (key.startsWith("BG") && key.length() >= 3) {
+            String n = key.substring(2);
+            if (n.equals("1") || n.equals("2") || n.equals("3")) return n;
+        }
+        return "1";
+    }
+
+    // =====================================================================
+    // IMAGE LOADING
+    // =====================================================================
+
+    /** Quick icon-like loader (classpath first then filesystem). */
+    private static Image loadImageAny(String path) {
+        try {
+            URL cp = GameAssets.class.getClassLoader().getResource(path);
+            if (cp == null) cp = GameAssets.class.getResource("/" + path);
+            if (cp != null) {
+                System.out.println("[ASSETS] Loaded IMG from CLASSPATH: " + path);
+                return new ImageIcon(cp).getImage();
+            }
+
+            File f = new File(path.startsWith("/") ? path.substring(1) : path);
+            System.out.println("[ASSETS] Trying IMG FS: " + f.getAbsolutePath());
+            if (f.exists()) {
+                System.out.println("[ASSETS] Loaded IMG from FILESYSTEM: " + f.getAbsolutePath());
+                return new ImageIcon(f.getAbsolutePath()).getImage();
+            }
+        } catch (Exception e) {
+            System.err.println("[ASSETS] IMG load error: " + path + " -> " + e.getMessage());
+        }
+        System.err.println("[ASSETS] IMG NOT FOUND: " + path);
+        return null;
+    }
+
+    /** Background loader (classpath first then filesystem). */
+    private static Image loadImageOnce(String path) {
+        try {
+            URL cp = GameAssets.class.getClassLoader().getResource(path);
+            if (cp == null) cp = GameAssets.class.getResource("/" + path);
+
+            if (cp != null) {
+                System.out.println("[ASSETS] Loaded IMG from CLASSPATH: " + path);
+                return new ImageIcon(cp).getImage();
+            }
+
+            File file = new File(path.startsWith("/") ? path.substring(1) : path);
+            System.out.println("[ASSETS] Trying IMG FS: " + file.getAbsolutePath());
+            if (file.exists()) {
+                System.out.println("[ASSETS] Loaded IMG from FILESYSTEM: " + file.getAbsolutePath());
+                return new ImageIcon(file.getAbsolutePath()).getImage();
+            }
+
+            System.err.println("[ASSETS] IMG NOT FOUND: " + path);
+        } catch (Exception e) {
+            System.err.println("[ASSETS] IMG load error: " + path);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // =====================================================================
+    // GIF LOADING 
+    // =====================================================================
+    private static ImageIcon[] loadGifArray(String[] paths) {
         ImageIcon[] icons = new ImageIcon[paths.length];
 
         for (int i = 0; i < paths.length; i++) {
@@ -87,14 +212,14 @@ public final class GameAssets {
             try {
                 ImageIcon icon = null;
 
-                // 1) classpath
                 URL cp = GameAssets.class.getClassLoader().getResource(path);
+                if (cp == null) cp = GameAssets.class.getResource("/" + path);
+
                 if (cp != null) {
                     System.out.println("[ASSETS] GIF from CLASSPATH: " + path);
                     icon = new ImageIcon(cp);
                 } else {
-                    // 2) filesystem
-                    File file = new File(path);
+                    File file = new File(path.startsWith("/") ? path.substring(1) : path);
                     System.out.println("[ASSETS] GIF trying FS: " + file.getAbsolutePath());
                     if (file.exists()) {
                         System.out.println("[ASSETS] GIF from FILESYSTEM: " + file.getAbsolutePath());
@@ -104,12 +229,7 @@ public final class GameAssets {
                     }
                 }
 
-                if (icon != null) {
-                    Image img = icon.getImage().getScaledInstance(size, size, Image.SCALE_DEFAULT);
-                    icons[i] = new ImageIcon(img);
-                } else {
-                    icons[i] = null;
-                }
+                icons[i] = icon;
 
             } catch (Exception e) {
                 System.err.println("[ASSETS] Error loading GIF: " + path);
@@ -119,71 +239,4 @@ public final class GameAssets {
         }
         return icons;
     }
-
-
-    // ---------- Cached images (loaded once) ----------
-    public static final Image MAIN_BACKGROUND =
-            loadImageOnce(MAIN_BG_PATH);
-    
-    public static final Image HISTORY_BACKGROUND =
-            loadImageOnce(HISTORY_BG_PATH);
-
-    public static final Image GAME_BACKGROUND =
-            loadImageOnce(PLAY_BG_PATH);
-
-    public static final Image END_BACKGROUND =
-            loadImageOnce(END_BG_PATH);
-
-
-    public static final Image MATCH_BACKGROUND= loadImageOnce(MATCH_BG_PATH);
-
-
-    private GameAssets() { }
-
-    /**
-     * Tries to load an image once.
-     * 1) From CLASSPATH (for JAR)
-     * 2) From filesystem (for IntelliJ/IDE)
-     * If both fail, logs a warning and returns null.
-     */
-    private static Image loadImageOnce(String path) {
-        File file = null;
-        try {
-            // 1) classpath
-            URL cp = GameAssets.class.getClassLoader().getResource(path);
-            if (cp != null) {
-                System.out.println("[ASSETS] Loaded from CLASSPATH: " + path);
-                return new ImageIcon(cp).getImage();
-            }
-
-            // 2) filesystem
-            file = new File(path);
-            System.out.println("[ASSETS] Trying FS: " + file.getAbsolutePath());
-            if (file.exists()) {
-                System.out.println("[ASSETS] Loaded from FILESYSTEM: " +
-                        file.getAbsolutePath());
-                return new ImageIcon(file.getAbsolutePath()).getImage();
-            }
-
-            // 3) fail – non-fatal
-            System.err.println("=== ASSET LOAD WARNING (non-fatal) ===");
-            System.err.println("Requested : " + path);
-            if (file != null) {
-                System.err.println("FS path   : " + file.getAbsolutePath() +
-                        " (exists=" + file.exists() + ")");
-            }
-            System.err.println("Work dir  : " + System.getProperty("user.dir"));
-            System.err.println("Returning null for this asset.");
-            System.err.println("======================================");
-        } catch (Exception ex) {
-            System.err.println("=== ASSET LOAD ERROR (non-fatal) ===");
-            System.err.println("Requested : " + path);
-            ex.printStackTrace();
-            System.err.println("Returning null for this asset.");
-            System.err.println("=================================");
-        }
-        return null;
-    }
-
-
 }

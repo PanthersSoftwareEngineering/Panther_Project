@@ -4,7 +4,6 @@ import view.dialogs.AbstractStyledDialog;
 
 import javax.swing.*;
 import java.awt.*;
-import static view.QuestionManagerView.RoundedButton;
 
 /**
  * StyledConfirmDialog
@@ -50,8 +49,8 @@ public class StyledConfirmDialog extends AbstractStyledDialog {
         String okText = (options == JOptionPane.YES_NO_OPTION) ? "Yes" : "OK";
         String cancelText = (options == JOptionPane.YES_NO_OPTION) ? "No" : "Cancel";
 
-        RoundedButton okBtn = createButton(okText, 220, 70, 26);
-        RoundedButton cancelBtn = createButton(cancelText, 220, 70, 26);
+        BaseGameFrame.RoundedButton okBtn = createButton(okText, 220, 70, 26);
+        BaseGameFrame.RoundedButton cancelBtn = createButton(cancelText, 220, 70, 26);
 
         okBtn.addActionListener(e -> {
             result = JOptionPane.OK_OPTION;

@@ -2,14 +2,12 @@ package view;
 
 import controller.AppController;
 import model.SysData;
-
 import javax.swing.*;
 import java.awt.*;
 
 /**
  * End-of-game screen
- * Optimized layout to ensure all elements stay within the center panel boundaries
- */
+ **/
 public class EndView extends BaseGameFrame {
 
     public EndView(AppController app, SysData.GameRecord rec) {
@@ -29,7 +27,7 @@ public class EndView extends BaseGameFrame {
 
         boolean won = rec != null && rec.won;
 
-        // TOP SECTION: TITLE
+        // Title
         JPanel topPanel = new JPanel();
         topPanel.setOpaque(false);
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
@@ -37,8 +35,8 @@ public class EndView extends BaseGameFrame {
 
         JLabel titleLabel = new JLabel(won ? "YOU WON !" : "YOU LOST...");
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLabel.setForeground(new Color(255, 204, 0));
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 80)); // Slightly smaller title
+        titleLabel.setForeground(UIStyles.ACCENT);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 80)); 
 
         topPanel.add(titleLabel);
         bgPanel.add(topPanel, BorderLayout.NORTH);
@@ -50,7 +48,7 @@ public class EndView extends BaseGameFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(0, 0, 0, 150)); // Semi-transparent dark background
+                g2.setColor(new Color(0, 0, 0, 150)); 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
                 g2.dispose();
             }
@@ -147,7 +145,7 @@ public class EndView extends BaseGameFrame {
     private JLabel createFieldTitle(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setForeground(Color.WHITE);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 24)); // Reduced font size
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 24)); 
         return lbl;
     }
 
@@ -158,7 +156,7 @@ public class EndView extends BaseGameFrame {
         lbl.setOpaque(true);
         lbl.setBackground(Color.WHITE);
         lbl.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
-        lbl.setPreferredSize(new Dimension(350, 45)); // Reduced size
+        lbl.setPreferredSize(new Dimension(350, 45)); 
         return lbl;
     }
 
@@ -168,8 +166,8 @@ public class EndView extends BaseGameFrame {
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 22));
         lbl.setOpaque(true);
         lbl.setBackground(new Color(15, 17, 26));
-        lbl.setBorder(BorderFactory.createLineBorder(new Color(255, 190, 60), 2));
-        lbl.setPreferredSize(new Dimension(250, 45)); // Reduced size
+        lbl.setBorder(BorderFactory.createLineBorder(UIStyles.ACCENT));
+        lbl.setPreferredSize(new Dimension(250, 45));
         return lbl;
     }
 
@@ -198,13 +196,15 @@ public class EndView extends BaseGameFrame {
 
     private static class ButtonStyled extends JButton {
         private final Color baseFill  = new Color(20, 24, 32, 235);
-        private final Color borderClr = new Color(255, 190, 60);
+        private final Color borderClr = UIStyles.ACCENT;
         ButtonStyled(String text) {
             super(text);
             setFont(new Font("Segoe UI", Font.BOLD, 26));
             setForeground(Color.WHITE);
             setContentAreaFilled(false);
             setBorderPainted(false);
+            setFocusPainted(false);
+            setFocusable(false);
             setPreferredSize(new Dimension(250, 70));
         }
         @Override

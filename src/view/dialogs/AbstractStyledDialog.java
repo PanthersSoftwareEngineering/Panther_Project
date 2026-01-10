@@ -2,7 +2,8 @@ package view.dialogs;
 
 import javax.swing.*;
 import java.awt.*;
-import static view.QuestionManagerView.RoundedButton;
+import view.BaseGameFrame;
+import view.UIStyles;
 
 /**
  * AbstractStyledDialog
@@ -39,7 +40,7 @@ public abstract class AbstractStyledDialog extends JDialog {
         setSize(dialogSize());
         setLocationRelativeTo(getOwner());
         getRootPane().setBorder(BorderFactory.createLineBorder(accentColor(), 4, true));
-
+        
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(backgroundColor());
         root.setBorder(BorderFactory.createEmptyBorder(22, 28, 18, 28));
@@ -129,8 +130,8 @@ public abstract class AbstractStyledDialog extends JDialog {
     protected Dimension dialogSize() { return new Dimension(620, 280); }
     protected int messageBlockWidth() { return 520; }
 
-    protected Color backgroundColor() { return new Color(15, 18, 40, 250); }
-    protected Color accentColor() { return new Color(255, 195, 0); }
+    protected Color backgroundColor() { return new Color(15, 18, 40, 250); } 
+    protected Color accentColor() { return UIStyles.ACCENT; }
 
     protected Color titleColor() { return accentColor(); }
     protected Color primaryColor() { return Color.WHITE; }
@@ -140,8 +141,8 @@ public abstract class AbstractStyledDialog extends JDialog {
     protected int primaryFontSize() { return 18; }
     protected int secondaryFontSize() { return 14; }
 
-    protected RoundedButton createButton(String text, int w, int h, int fontSize) {
-        return new RoundedButton(text, w, h, fontSize);
+    protected BaseGameFrame.RoundedButton createButton(String text, int w, int h, int fontSize) {
+        return new BaseGameFrame.RoundedButton(text, w, h, fontSize);
     }
 
     public final int showDialog() {

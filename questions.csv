@@ -18,4 +18,4 @@ ID,Question,Difficulty,A,B,C,D,CorrectAnswer
 17,What is Qualification in IEEE terms?,4,Check operational suitability,Check UI layout,Check costs,Check design,A
 18,Why are Specifications a legal document?,1,Define hardware only,List team roles,Add UI rules,Avoid ambiguity,D
 19,What is SQA filtering effectiveness?,3,Lines of code,Memory usage,Defects removed by activity,Team productivity,C
-20,What is the main purpose of the Controller in the MVC architecture?,2,Handling user input and updating the Model,Rendering the UI components on screen,Storing application data permanently,Managing low-level system resources,A
+20,What is the main purpose of the Controller in the MVC architecture?,2,Handling user input and updating the Model,Rendering the UI components on screen,Storing application data permanently,Managing low level system resources,A

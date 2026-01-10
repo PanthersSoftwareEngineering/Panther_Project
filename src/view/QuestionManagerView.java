@@ -13,25 +13,21 @@ import model.Question;
 
 /**
  * Management window for all questions. 
- * Fully synced with BaseGameFrame design, Main Menu background, and centered title
- */
+ **/
 public class QuestionManagerView extends BaseGameFrame { 
 
     private final QuestionController controller;
     private final QuestionTable table; 
     private final QuestionTableModel model;
 
-    // --- Navy/Gold Theme Colors to match History/Main Menu style ---
-    private static final Color ACCENT_COLOR = new Color(255, 195, 0); // Gold
     private static final Color TABLE_BG = new Color(25, 28, 60); 
     private static final Color TABLE_HEADER_BG = new Color(30, 32, 70); 
 
     public QuestionManagerView(QuestionController controller) {
         super(AppController.getInstance(), "Question Manager");
         this.controller = controller;
-
-        // =====  Background Setup (Main Menu Background) =====
-        Image bgImage = GameAssets.MATCH_BACKGROUND; // Switched to MAIN_MENU
+        // =====  Background Setup =====
+        Image bgImage = GameAssets.MATCH_BACKGROUND; 
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new GridBagLayout());
         setContentPane(bgPanel);
@@ -43,7 +39,6 @@ public class QuestionManagerView extends BaseGameFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Glass-morphism effect matching History card
                 g2.setColor(new Color(0, 0, 0, 180)); 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
                 g2.dispose();
@@ -67,7 +62,7 @@ public class QuestionManagerView extends BaseGameFrame {
         // CENTERED TITLE
         JLabel title = new JLabel("Question Management", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 45));
-        title.setForeground(ACCENT_COLOR); 
+        title.setForeground(UIStyles.ACCENT);
         top.add(title, BorderLayout.CENTER);
 
         // BACK BUTTON (Using RoundedButton inherited from BaseGameFrame)
@@ -102,7 +97,7 @@ public class QuestionManagerView extends BaseGameFrame {
         
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setBorder(new LineBorder(ACCENT_COLOR, 3, true)); 
+        scrollPane.setBorder(new LineBorder(UIStyles.ACCENT, 3, true));
         scrollPane.getViewport().setBackground(TABLE_BG); 
         centerFrame.add(scrollPane, BorderLayout.CENTER);
 

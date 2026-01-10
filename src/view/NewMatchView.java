@@ -1,7 +1,6 @@
 package view;
 
 import controller.AppController;
-
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
@@ -19,7 +18,8 @@ import java.awt.event.MouseEvent;
  * 2) Names cannot be the same (case-insensitive)
  * 3) Names must be at most 10 characters
  * 4) Names may contain only English letters and digits (A-Z, a-z, 0-9)
- */
+ * **/
+
 public class NewMatchView extends BaseGameFrame {
 
     // ----- player fields -----
@@ -47,7 +47,7 @@ public class NewMatchView extends BaseGameFrame {
     private final JLabel hardSurprisesLabel  = new JLabel();
     private final JLabel hardQuestionsLabel  = new JLabel();
 
-    /** Selected difficulty – EASY by default. */
+    /** Selected difficulty – must be chosen by the user (null by default). */
     private String selectedDifficulty = null;
 
     public NewMatchView(AppController app) {
@@ -63,14 +63,31 @@ public class NewMatchView extends BaseGameFrame {
         bgPanel.setLayout(new BorderLayout());
         setContentPane(bgPanel);
 
+        // =========================================================
+        // TOP SECTION: TITLE 
+        // =========================================================
+        JPanel topPanel = new JPanel();
+        topPanel.setOpaque(false);
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+        topPanel.add(Box.createVerticalStrut(30));
+
+        JLabel titleLabel = new JLabel("New Match");
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titleLabel.setForeground(UIStyles.ACCENT);            
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 80)); 
+        topPanel.add(titleLabel);
+
+        topPanel.add(Box.createVerticalStrut(15));
+        bgPanel.add(topPanel, BorderLayout.NORTH);
+
         // ================= MAIN PANEL =================
         JPanel mainPanel = new JPanel();
         mainPanel.setOpaque(false);
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // small vertical offset from the top (after the big yellow title)
-        mainPanel.add(Box.createVerticalStrut(220));
+        // small vertical offset from the title
+        mainPanel.add(Box.createVerticalStrut(40));
 
         // ===== center content (players + difficulty + buttons) =====
         JPanel center = new JPanel();
@@ -215,7 +232,7 @@ public class NewMatchView extends BaseGameFrame {
         center.add(bottomButtons);
         center.add(Box.createVerticalStrut(50));
 
-        // add center into main, and main as CENTER of bgPanel
+       
         mainPanel.add(center);
         mainPanel.add(Box.createVerticalGlue());
         bgPanel.add(mainPanel, BorderLayout.CENTER);
@@ -249,12 +266,9 @@ public class NewMatchView extends BaseGameFrame {
             refreshDifficultyStyles();
             updateDifficultyInfo();
         });
-        
-      // initial 
+
+        // initial styles (no selection yet)
         refreshDifficultyStyles();
-
-
-        
     }
 
     private void styleDifficultyButton(JButton btn) {
@@ -291,7 +305,7 @@ public class NewMatchView extends BaseGameFrame {
     private void refreshDifficultyStyles() {
         Color selectedBg       = new Color(15, 15, 15);
         Color unselectedBg     = new Color(25, 25, 25);
-        Color selectedBorder   = new Color(255, 200, 80);
+        Color selectedBorder   = UIStyles.ACCENT;          
         Color unselectedBorder = new Color(210, 210, 210);
         int borderWidth = 4;
 
@@ -380,24 +394,16 @@ public class NewMatchView extends BaseGameFrame {
 
             // 2) Names must be at most 10 characters
             if (name1.length() > 10) {
-                StyledAlertDialog.show(
-                        this,
-                        "Invalid Player 1 Name",
-                        "Player 1 name must be at most 10 characters.",
-                        true
-                );
+                StyledAlertDialog.show(this, "Invalid Player 1 Name",
+                        "Player 1 name must be at most 10 characters.", true);
                 p1.requestFocusInWindow();
                 p1.selectAll();
                 return;
             }
 
             if (name2.length() > 10) {
-                StyledAlertDialog.show(
-                        this,
-                        "Invalid Player 2 Name",
-                        "Player 2 name must be at most 10 characters.",
-                        true
-                );
+                StyledAlertDialog.show(this, "Invalid Player 2 Name",
+                        "Player 2 name must be at most 10 characters.", true);
                 p2.requestFocusInWindow();
                 p2.selectAll();
                 return;
@@ -405,24 +411,16 @@ public class NewMatchView extends BaseGameFrame {
 
             // 3) Names may contain only English letters and digits
             if (!isOnlyEnglishLettersAndDigits(name1)) {
-                StyledAlertDialog.show(
-                        this,
-                        "Invalid Player 1 Name",
-                        "Player 1 name may contain only English letters and digits.",
-                        true
-                );
+                StyledAlertDialog.show(this, "Invalid Player 1 Name",
+                        "Player 1 name may contain only English letters and digits.", true);
                 p1.requestFocusInWindow();
                 p1.selectAll();
                 return;
             }
 
             if (!isOnlyEnglishLettersAndDigits(name2)) {
-                StyledAlertDialog.show(
-                        this,
-                        "Invalid Player 2 Name",
-                        "Player 2 name may contain only English letters and digits.",
-                        true
-                );
+                StyledAlertDialog.show(this, "Invalid Player 2 Name",
+                        "Player 2 name may contain only English letters and digits.", true);
                 p2.requestFocusInWindow();
                 p2.selectAll();
                 return;
@@ -440,7 +438,8 @@ public class NewMatchView extends BaseGameFrame {
                 p2.selectAll();
                 return;
             }
-         // Difficulty must be selected
+
+            // Difficulty must be selected
             if (selectedDifficulty == null) {
                 StyledAlertDialog.show(
                         this,
@@ -450,7 +449,6 @@ public class NewMatchView extends BaseGameFrame {
                 );
                 return;
             }
-
 
             try {
                 app.onStart(name1, name2, selectedDifficulty);
@@ -491,7 +489,7 @@ public class NewMatchView extends BaseGameFrame {
 
     /** Returns true only if the string is made of English letters and digits (A-Z, a-z, 0-9) */
     private static boolean isOnlyEnglishLettersAndDigits(String s) {
-    	 return s != null && s.matches("^[A-Za-z0-9]+( [A-Za-z0-9]+)*$");
+        return s != null && s.matches("^[A-Za-z0-9]+( [A-Za-z0-9]+)*$");
     }
 
     private void styleTextField(JTextField f) {
@@ -550,7 +548,6 @@ public class NewMatchView extends BaseGameFrame {
     private static class ButtonStyled extends JButton {
         private final Color baseFill  = new Color(20, 24, 32, 235);
         private final Color hoverFill = new Color(40, 44, 54, 245);
-        private final Color borderClr = new Color(255, 190, 60);
         private final int radius = 45;
 
         public ButtonStyled(String text) {
@@ -578,19 +575,18 @@ public class NewMatchView extends BaseGameFrame {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             Color fill = getModel().isRollover() ? hoverFill : baseFill;
-
             int w = getWidth();
             int h = getHeight();
 
             g2.setColor(fill);
             g2.fillRoundRect(0, 0, w, h, radius, radius);
 
+            // ✅ Always use current accent (in case theme changes while open)
             g2.setStroke(new BasicStroke(4f));
-            g2.setColor(borderClr);
+            g2.setColor(UIStyles.ACCENT);
             g2.drawRoundRect(2, 2, w - 4, h - 4, radius, radius);
 
             g2.dispose();
