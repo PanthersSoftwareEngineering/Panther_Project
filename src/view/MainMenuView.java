@@ -4,6 +4,8 @@ import controller.AppController;
 import view.GameAssets;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+
 import java.awt.*;
 
 /**
@@ -32,11 +34,11 @@ public class MainMenuView extends BaseGameFrame {
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setForeground(UIStyles.ACCENT);
         title.setFont(new Font("Segoe UI", Font.BOLD, 100));
-        mainPanel.add(Box.createVerticalStrut(10));
+        
         mainPanel.add(title);
 
         // Gap between title and buttons
-        mainPanel.add(Box.createVerticalStrut(70));
+        mainPanel.add(Box.createVerticalStrut(20));
 
         // ===== buttons column =====
         JPanel buttonsPanel = new JPanel();
@@ -72,11 +74,35 @@ public class MainMenuView extends BaseGameFrame {
         mainPanel.add(buttonsPanel);
         mainPanel.add(Box.createVerticalStrut(30));
 
+        // ===== Help Button (Top Right) =====
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        topBar.setOpaque(false);
+        topBar.setBorder(new EmptyBorder(20, 0, 0, 20));
+
+        RoundedButton helpBtn = new RoundedButton("?", 60, 60, 30);
+        helpBtn.addActionListener(e -> {
+            InstructionsDialog dialog = new InstructionsDialog(this);
+            dialog.setVisible(true);
+        });
+        topBar.add(helpBtn);
+
+        // --- HELP BUTTON CONSTRAINTS ---
+        GridBagConstraints gbcHelp = new GridBagConstraints();
+        gbcHelp.gridx = 0;
+        gbcHelp.gridy = 0;
+        gbcHelp.weightx = 1.0;
+        gbcHelp.weighty = 0.0; 
+        gbcHelp.anchor = GridBagConstraints.FIRST_LINE_END; 
+        bgPanel.add(topBar, gbcHelp);
+        
+        // --- MAIN PANEL CONSTRAINTS ---
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.NORTH; 
-        gbc.insets = new Insets(-150, 0, 0, 0);  
+        gbc.gridy = 1; 
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0; // Now the main panel takes the remaining space
+        gbc.anchor = GridBagConstraints.CENTER; // Center the buttons
+        gbc.insets = new Insets(-50, 0, 0, 0); // Adjusted inset to move it up slightly
         bgPanel.add(mainPanel, gbc);
 
         // ===== actions =====
