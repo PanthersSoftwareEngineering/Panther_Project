@@ -2,6 +2,7 @@ package view;
 
 import controller.AppController;
 import model.SysData;
+import util.BackgroundMusic;
 
 import javax.swing.*;
 import java.awt.*;
@@ -142,7 +143,9 @@ public class PersonalizationView extends BaseGameFrame {
         leftCardHost.setOpaque(false);
         leftCardHost.add(buildLeftColorColumn(current), "COLOR");
         leftCardHost.add(buildLeftBackgroundColumn(), "BG");
+        leftCardHost.add(buildLeftMusicColumn(), "MUSIC");
         leftCards.show(leftCardHost, "COLOR");
+
 
         // RIGHT: live preview
         JPanel rightPreview = buildRightPreviewColumn();
@@ -223,13 +226,16 @@ public class PersonalizationView extends BaseGameFrame {
     private JComponent buildTabs() {
         TabButton colorTab = new TabButton("Color");
         TabButton bgTab    = new TabButton("Background");
+        TabButton musicTab = new TabButton("Music");
 
         ButtonGroup grp = new ButtonGroup();
         grp.add(colorTab);
         grp.add(bgTab);
+        grp.add(musicTab);
 
         styleTab(colorTab);
         styleTab(bgTab);
+        styleTab(musicTab);
 
         colorTab.setSelected(true);
 
@@ -242,13 +248,19 @@ public class PersonalizationView extends BaseGameFrame {
             applyBackgroundButtonVisuals();
         });
 
+        musicTab.addActionListener(e ->
+                leftCards.show(leftCardHost, "MUSIC")
+        );
+
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         row.setOpaque(false);
         row.add(colorTab);
         row.add(bgTab);
+        row.add(musicTab);
 
         return row;
     }
+
 
 
     private static class TabButton extends JToggleButton {
@@ -495,6 +507,53 @@ public class PersonalizationView extends BaseGameFrame {
         titleLabel.setForeground(UIStyles.ACCENT);
         SwingUtilities.updateComponentTreeUI(this);
         repaint();
+    }
+    private JPanel buildLeftMusicColumn() {
+        JPanel leftCol = new JPanel();
+        leftCol.setOpaque(false);
+        leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel("Music Settings", SwingConstants.LEFT);
+        title.setForeground(Color.WHITE);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        leftCol.add(title);
+        leftCol.add(Box.createVerticalStrut(18));
+
+        JCheckBox musicToggle = new JCheckBox("Enable Background Music");
+        musicToggle.setOpaque(false);
+        musicToggle.setForeground(Color.WHITE);
+        musicToggle.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        musicToggle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        musicToggle.setSelected(BackgroundMusic.isPlaying());
+
+        musicToggle.addActionListener(e -> {
+            if (musicToggle.isSelected())
+                BackgroundMusic.start();
+            else
+                BackgroundMusic.stop();
+        });
+
+        leftCol.add(musicToggle);
+        leftCol.add(Box.createVerticalStrut(28));
+
+        JLabel volLabel = new JLabel("Volume");
+        volLabel.setForeground(Color.WHITE);
+        volLabel.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        volLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JSlider volume = new JSlider(0, 100, BackgroundMusic.getVolumePercent());
+        volume.setOpaque(false);
+        volume.addChangeListener(e ->
+                BackgroundMusic.setVolume(volume.getValue() / 100f)
+        );
+
+        leftCol.add(volLabel);
+        leftCol.add(Box.createVerticalStrut(10));
+        leftCol.add(volume);
+
+        return leftCol;
     }
 
     private void updatePreviewAccent(Color accent) {
