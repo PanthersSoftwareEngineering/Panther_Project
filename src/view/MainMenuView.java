@@ -34,11 +34,11 @@ public class MainMenuView extends BaseGameFrame {
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setForeground(UIStyles.ACCENT);
         title.setFont(new Font("Segoe UI", Font.BOLD, 100));
-        mainPanel.add(Box.createVerticalStrut(10));
+        
         mainPanel.add(title);
 
         // Gap between title and buttons
-        mainPanel.add(Box.createVerticalStrut(70));
+        mainPanel.add(Box.createVerticalStrut(20));
 
         // ===== buttons column =====
         JPanel buttonsPanel = new JPanel();
