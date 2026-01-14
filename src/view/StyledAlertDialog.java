@@ -4,11 +4,10 @@ import view.dialogs.AbstractStyledDialog;
 
 import javax.swing.*;
 import java.awt.*;
-import static view.QuestionManagerView.RoundedButton;
 
 /**
  * StyledAlertDialog
- * =================
+ * -----------------
  * One-button modal dialog used for errors and user guidance
  */
 public class StyledAlertDialog extends AbstractStyledDialog {
@@ -35,7 +34,7 @@ public class StyledAlertDialog extends AbstractStyledDialog {
         this.detailMsg = (detail != null && !detail.isBlank()) ? detail : null;
         this.isError = isError;
 
-        initDialog(); // build UI after fields are ready
+        initDialog(); // build UI after fields are ready and filled
     }
 
     @Override
@@ -63,7 +62,7 @@ public class StyledAlertDialog extends AbstractStyledDialog {
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 6));
         bottom.setOpaque(false);
 
-        RoundedButton okBtn = createButton("OK", 220, 70, 26);
+        BaseGameFrame.RoundedButton okBtn = createButton("OK", 220, 70, 26);
         okBtn.addActionListener(e -> {
             result = JOptionPane.OK_OPTION;
             dispose();

@@ -5,6 +5,7 @@ import javax.swing.SwingUtilities;
 import model.DifficultyLevel;
 import model.*;
 import view.StartListener;
+import view.UIStyles;
 
 /**
  * Central application controller (Singleton)
@@ -24,11 +25,10 @@ public class AppController implements StartListener {
         return INSTANCE;
     }
 
-    /**
-     * Private constructor to prevent direct instantiation
-     */
+    //Private constructor to prevent direct instantiation
     private AppController(){
     	sys = SysData.getInstance();
+    	UIStyles.setAccent(sys.getAccentColor());
     	
     }
 
@@ -36,9 +36,7 @@ public class AppController implements StartListener {
 
     // ---------- Entry points / navigation ----------
 
-    /**
-     * Opens the main menu window on the Swing event-dispatch thread
-     */
+    //Opens the main menu window on the Swing event-dispatch thread
     public void showMainMenu(){
         SwingUtilities.invokeLater(() -> new view.MainMenuView(this).showSelf());
     }
@@ -66,10 +64,8 @@ public class AppController implements StartListener {
         // Open the game view that shows both boards
         new view.GameViewTwoBoards(mc, this).showSelf();
     }
-
-    /**
-     * Opens the "New Match" screen
-     */
+ 
+    //Opens the "New Match" screen
     public void openNewMatch(){
         if (!hasEnoughQuestionsForMatch()) {
             javax.swing.JOptionPane.showMessageDialog(
@@ -91,21 +87,21 @@ public class AppController implements StartListener {
         return sys.questionCount() >= 20;
     }
 
-    /**
-     * Opens the game history screen which displays previously saved matches
-     */
+    //Opens the game history screen which displays previously saved matches
     public void openHistory(){
         new view.HistoryView(sys).showSelf();
     }
 
-    /**
-     * Opens the question management screen which allows CRUD operations on questions
-     */
+    //Opens the question management screen which allows CRUD operations on questions
     public void openQuestionManager(){
         QuestionController qc = QuestionController.getInstance(sys);
         new view.QuestionManagerView(qc).showSelf();
     }
-
+    
+    //Opens the game personalization screen 
+    public void openPersonalization() {
+        new view.PersonalizationView(this).showSelf();
+    }
     /**
      * Opens the end-of-game screen summarizing the result of the given record
      * @param rec the game record of the just-finished match

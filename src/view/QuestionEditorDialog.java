@@ -9,10 +9,10 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.List;
 
+
 /**
  * Styled modal dialog for adding/editing questions.
- * Fully aligned with Navy/Gold theme and BaseGameFrame buttons
- */
+ **/
 public class QuestionEditorDialog extends JDialog {
 
     private Question result = null;
@@ -24,10 +24,11 @@ public class QuestionEditorDialog extends JDialog {
     private final JComboBox<String> cbLevel;
     private final JTextField tfOpt1, tfOpt2, tfOpt3, tfOpt4;
     private final JComboBox<String> cbCorrect;
-
-    // Navy/Gold Styling in buttons (Matching History/Main Menu)
     private static final Color DARK_BG = new Color(15, 18, 40, 250);
-    private static final Color GOLD_ACCENT = new Color(255, 190, 60);
+
+    
+    private static Color GOLD_ACCENT = UIStyles.ACCENT;
+
     private static final Color FIELD_BG = new Color(30, 32, 70);
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private static final Font INPUT_FONT = new Font("Segoe UI", Font.PLAIN, 16);
@@ -41,6 +42,9 @@ public class QuestionEditorDialog extends JDialog {
     private QuestionEditorDialog(JFrame owner, Question original, int maxExistingId) {
         super(owner, original == null ? "Add Question" : "Edit Question", true);
         this.isAddMode = (original == null);
+
+        // refresh dynamic accent at dialog creation time
+        GOLD_ACCENT = UIStyles.ACCENT;
 
         setUndecorated(true);
         setSize(750, 650);
@@ -139,6 +143,9 @@ public class QuestionEditorDialog extends JDialog {
         comp.setForeground(Color.WHITE);
         comp.setBackground(FIELD_BG);
 
+        // ensure accent is always current when styling happens
+        GOLD_ACCENT = UIStyles.ACCENT;
+
         if (comp instanceof JTextField tf) {
             tf.setCaretColor(GOLD_ACCENT);
             tf.setBorder(new LineBorder(GOLD_ACCENT, 1));
@@ -149,19 +156,27 @@ public class QuestionEditorDialog extends JDialog {
                 @Override
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                     JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    l.setBackground(isSelected ? GOLD_ACCENT : FIELD_BG);
+
+                    // read the latest accent dynamically
+                    Color accentNow = UIStyles.ACCENT;
+
+                    l.setBackground(isSelected ? accentNow : FIELD_BG);
                     l.setForeground(isSelected ? Color.BLACK : Color.WHITE);
                     return l;
                 }
             });
         }
-    
+
     }
 
     private void addStyledRow(JPanel parent, GridBagConstraints gbc, String labelText, JComponent component,
-                              int gridx, int gridy, int width) {
+                             int gridx, int gridy, int width) {
         JLabel label = new JLabel(labelText);
         label.setFont(LABEL_FONT);
+
+        // ensure accent is always current when styling happens
+        GOLD_ACCENT = UIStyles.ACCENT;
+
         label.setForeground(GOLD_ACCENT);
 
         gbc.gridx = gridx * 2;
@@ -189,7 +204,6 @@ public class QuestionEditorDialog extends JDialog {
         return s == null ? "" : s.trim();
     }
 
-    
     //Show validation error in the same theme (visible on top of this dialog)
     private void showValidationError(String msg) {
         JFrame owner = (getOwner() instanceof JFrame jf) ? jf : null;
@@ -219,9 +233,9 @@ public class QuestionEditorDialog extends JDialog {
         // 3. Language Check (English only: letters, numbers, and common punctuation)
         // This regex allows English letters, digits, spaces, and signs like ?, !, ., ,
         String englishRegex = "^[a-zA-Z0-9\\s\\.,\\?!\\(\\)'\"]+$";
-        
-        if (!text.matches(englishRegex) || !o1.matches(englishRegex) || 
-            !o2.matches(englishRegex) || !o3.matches(englishRegex) || !o4.matches(englishRegex)) {
+
+        if (!text.matches(englishRegex) || !o1.matches(englishRegex) ||
+                !o2.matches(englishRegex) || !o3.matches(englishRegex) || !o4.matches(englishRegex)) {
             showValidationError("Only English characters and standard punctuation are allowed.");
             return;
         }
@@ -243,7 +257,7 @@ public class QuestionEditorDialog extends JDialog {
                 correctIdx,
                 QuestionLevel.valueOf(cbLevel.getSelectedItem().toString())
         );
-        
+
         dispose();
     }
 }

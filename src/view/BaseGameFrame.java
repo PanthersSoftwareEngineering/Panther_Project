@@ -7,14 +7,7 @@ import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 
-/**
- * Base frame for all game windows.
- * - Full screen
- * - Not resizable, not draggable
- * - Custom exit confirmation
- * - Uses UIStyles (gold theme) for consistent golden text/borders
- * - Adds a reusable in-frame popup ("toast") with golden text
- */
+
 public abstract class BaseGameFrame extends JFrame {
 
     protected final AppController app;
@@ -33,7 +26,7 @@ public abstract class BaseGameFrame extends JFrame {
         // --- Changing the Java Coffee Icon to a bomb one ---
         try {
             // Load the image
-        	// Set the taskbar and window icon
+            // Set the taskbar and window icon
             if (GameAssets.GAME_ICON != null) {
                 this.setIconImage(GameAssets.GAME_ICON);
             }
@@ -41,17 +34,14 @@ public abstract class BaseGameFrame extends JFrame {
             System.err.println("Could not load game icon: " + e.getMessage());
             System.out.println("[DEBUG] Game icon is null. Check path in GameAssets.");
         }
-        
+
         // --- close behaviour: we decide in confirmExit() ---
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         // --- full screen with OS bar ---
-        setResizable(false);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
-
-        
 
         // when user clicks the OS X/close button
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -73,7 +63,7 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     // =========================================================
-    //  Exit confirmation – default behaviour: ask & exit game
+    //  Exit confirmation - default behaviour: ask & exit game
     // =========================================================
     protected void confirmExit() {
         boolean shouldExit = showStyledExitDialog();
@@ -94,7 +84,8 @@ public abstract class BaseGameFrame extends JFrame {
 
         JPanel root = new JPanel();
         root.setBackground(new Color(12, 12, 20, 240));
-        root.setBorder(BorderFactory.createLineBorder(UIStyles.GOLD_TEXT, 3));
+        // use dynamic accent
+        root.setBorder(BorderFactory.createLineBorder(UIStyles.ACCENT, 3));
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         dialog.setContentPane(root);
 
@@ -102,7 +93,8 @@ public abstract class BaseGameFrame extends JFrame {
 
         JLabel msg = new JLabel("Are you sure you want to exit the game?");
         msg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        msg.setForeground(UIStyles.GOLD_TEXT);
+        // use dynamic accent
+        msg.setForeground(UIStyles.ACCENT);
         msg.setFont(new Font("Segoe UI", Font.BOLD, 20));
         root.add(msg);
 
@@ -143,7 +135,7 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     // =========================================================
-    //  Reusable in-frame toast (golden popup message)
+    //  Reusable in-frame toast (popup message)
     // =========================================================
 
     protected final void installToastLayer() {
@@ -198,7 +190,7 @@ public abstract class BaseGameFrame extends JFrame {
         showToast(message, 2000);
     }
 
-    /** Show a golden popup message inside the same frame (non-blocking) */
+    /** Show a popup message inside the same frame (non-blocking) */
     protected final void showToast(String message, int durationMs) {
         popupLabel.setText(message);
         popupPanel.setVisible(true);
@@ -210,7 +202,8 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     private void initToastUI() {
-        popupLabel.setForeground(UIStyles.GOLD_TEXT);
+        //  dynamic accent
+        popupLabel.setForeground(UIStyles.ACCENT);
         popupLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         popupLabel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
 
@@ -227,9 +220,10 @@ public abstract class BaseGameFrame extends JFrame {
                 g2.setColor(new Color(0, 0, 0, 185));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 22, 22);
 
-                // gold border
+                //  accent border (dynamic)
+                Color a = UIStyles.ACCENT;
                 g2.setStroke(new BasicStroke(3f));
-                g2.setColor(new Color(UIStyles.GOLD_TEXT.getRed(), UIStyles.GOLD_TEXT.getGreen(), UIStyles.GOLD_TEXT.getBlue(), 200));
+                g2.setColor(new Color(a.getRed(), a.getGreen(), a.getBlue(), 200));
                 g2.drawRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 22, 22);
 
                 g2.dispose();
@@ -250,14 +244,14 @@ public abstract class BaseGameFrame extends JFrame {
 
         private final Color baseFill  = new Color(20, 24, 32, 235);
         private final Color hoverFill = new Color(40, 44, 54, 245);
-        private final Color borderClr = UIStyles.GOLD_TEXT;
-        private final int radius = 65;
+        private final int radius = 20;
 
         public RoundedButton(String text, int width, int height, int fontSize) {
             super(text);
 
             setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-            setForeground(UIStyles.GOLD_TEXT);
+            // initial; paintComponent keeps it synced anyway
+            setForeground(UIStyles.ACCENT);
 
             setFocusPainted(false);
             setContentAreaFilled(false);
@@ -287,9 +281,17 @@ public abstract class BaseGameFrame extends JFrame {
             g2.setColor(fill);
             g2.fillRoundRect(0, 0, w, h, radius, radius);
 
+            //  dynamic accent
+            Color accent = UIStyles.ACCENT;
+
             g2.setStroke(new BasicStroke(4f));
-            g2.setColor(borderClr);
+            g2.setColor(accent);
             g2.drawRoundRect(2, 2, w - 4, h - 4, radius, radius);
+
+            // keep text synced too
+            if (!accent.equals(getForeground())) {
+                setForeground(accent);
+            }
 
             g2.dispose();
             super.paintComponent(g);

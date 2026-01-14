@@ -63,7 +63,7 @@ public class Toast {
 
         // Label that displays the toast message
         JLabel lbl = new JLabel(message);
-        lbl.setForeground(UIStyles.GOLD_TEXT);
+        lbl.setForeground(new Color(230, 235, 255));
         lbl.setFont(UIStyles.HUD_FONT);
         panel.add(lbl, BorderLayout.CENTER);
 
