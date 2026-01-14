@@ -48,7 +48,6 @@ public class QuestionController {
         sys.replaceQuestion(oldId, updated);  
     }
 
-
     /* Provide next numeric ID for auto numbering in UI if needed */
     public int nextId(){
         return sys.nextQuestionId();

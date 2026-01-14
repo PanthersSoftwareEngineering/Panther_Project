@@ -17,19 +17,19 @@ public class MainMenuView extends BaseGameFrame {
     public MainMenuView(AppController app) {
         super(app, "Minesweeper");
 
-        // ===== background =====
+        // ---- background -----
         Image bgImage = GameAssets.MAIN_BACKGROUND;
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new GridBagLayout()); 
         setContentPane(bgPanel);
 
-        // ===== main vertical column (title + buttons) =====
+        // ---- main vertical column (title + buttons) ----
         JPanel mainPanel = new JPanel();
         mainPanel.setOpaque(false);
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // ===== Title =====
+        // ---- Title ----
         JLabel title = new JLabel("MineSweeper", SwingConstants.CENTER);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setForeground(UIStyles.ACCENT);
@@ -40,7 +40,7 @@ public class MainMenuView extends BaseGameFrame {
         // Gap between title and buttons
         mainPanel.add(Box.createVerticalStrut(20));
 
-        // ===== buttons column =====
+        // ---- buttons column ----
         JPanel buttonsPanel = new JPanel();
         buttonsPanel.setOpaque(false);
         buttonsPanel.setLayout(new BoxLayout(buttonsPanel, BoxLayout.Y_AXIS));
@@ -74,7 +74,7 @@ public class MainMenuView extends BaseGameFrame {
         mainPanel.add(buttonsPanel);
         mainPanel.add(Box.createVerticalStrut(30));
 
-        // ===== Help Button (Top Right) =====
+        // ---- Help Button (Top Right) ----
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         topBar.setOpaque(false);
         topBar.setBorder(new EmptyBorder(20, 0, 0, 20));
@@ -100,12 +100,12 @@ public class MainMenuView extends BaseGameFrame {
         gbc.gridx = 0;
         gbc.gridy = 1; 
         gbc.weightx = 1.0;
-        gbc.weighty = 1.0; // Now the main panel takes the remaining space
-        gbc.anchor = GridBagConstraints.CENTER; // Center the buttons
-        gbc.insets = new Insets(-50, 0, 0, 0); // Adjusted inset to move it up slightly
+        gbc.weighty = 1.0; // Fill available vertical space
+        gbc.anchor = GridBagConstraints.CENTER; // Center alignment within GridBag
+        gbc.insets = new Insets(-50, 0, 0, 0); // Offset upward for visual balance
         bgPanel.add(mainPanel, gbc);
 
-        // ===== actions =====
+        // ---- actions ----
         newGameBtn.addActionListener(e -> {
             app.openNewMatch();
             dispose();
@@ -129,7 +129,7 @@ public class MainMenuView extends BaseGameFrame {
         exitBtn.addActionListener(e -> confirmExit());
     }
 
-    // ===== background panel for this view =====
+    // ---- background panel for this view ----
     private static class BackgroundPanel extends JPanel {
         private final Image bg;
 

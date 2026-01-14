@@ -63,7 +63,7 @@ public abstract class BaseGameFrame extends JFrame {
     }
 
     // =========================================================
-    //  Exit confirmation – default behaviour: ask & exit game
+    //  Exit confirmation - default behaviour: ask & exit game
     // =========================================================
     protected void confirmExit() {
         boolean shouldExit = showStyledExitDialog();

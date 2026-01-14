@@ -57,7 +57,7 @@ public class NewMatchView extends BaseGameFrame {
             throw new IllegalArgumentException("AppController must not be null");
         }
 
-        // ===== background =====
+        // ---- background ----
         Image bgImage = GameAssets.GAME_BACKGROUND;
         BackgroundPanel bgPanel = new BackgroundPanel(bgImage);
         bgPanel.setLayout(new BorderLayout());
@@ -89,7 +89,7 @@ public class NewMatchView extends BaseGameFrame {
         // small vertical offset from the title
         mainPanel.add(Box.createVerticalStrut(40));
 
-        // ===== center content (players + difficulty + buttons) =====
+        // ----- center content (players + difficulty + buttons) -----
         JPanel center = new JPanel();
         center.setOpaque(false);
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));

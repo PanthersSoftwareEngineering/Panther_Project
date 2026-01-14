@@ -12,7 +12,7 @@ import java.awt.*;
  */
 public class WordWrapCellRenderer extends JTextArea implements TableCellRenderer {
 
-    // גבול דק כהה לשימור מראה הטבלה
+    // A thin, dark border to preserve the table's appearance
     private static final Border CELL_BORDER = new LineBorder(new Color(40, 60, 65), 1); 
 
     public WordWrapCellRenderer() {

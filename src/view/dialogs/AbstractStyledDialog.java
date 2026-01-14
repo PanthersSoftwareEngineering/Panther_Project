@@ -7,7 +7,7 @@ import view.UIStyles;
 
 /**
  * AbstractStyledDialog
- * ====================
+ * --------------------
  * Template Method base class for all game-styled dialogs.
  *
  * What this class guarantees:

@@ -7,7 +7,7 @@ import java.awt.*;
 
 /**
  * StyledConfirmDialog
- * ===================
+ * -------------------
  * Two-button modal dialog used when the user must confirm an action
  *
  * Returns:
@@ -28,7 +28,7 @@ public class StyledConfirmDialog extends AbstractStyledDialog {
         this.msg = (message == null) ? "" : message;
         this.options = options;
 
-        initDialog(); // build UI after fields are ready
+        initDialog(); // build UI after fields are ready and filled
     }
 
     @Override

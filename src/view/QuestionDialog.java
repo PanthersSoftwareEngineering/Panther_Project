@@ -7,7 +7,7 @@ import java.util.List;
 
 public class QuestionDialog extends JDialog {
 
-    private int answer = -1;          // will become 0..n-1 (no cancel)
+    private int answer = -1; // its purpose is to become 0..n-1 (no cancel)
     private boolean locked = false;
 
     private final List<JButton> optionButtons = new ArrayList<>();
@@ -19,7 +19,7 @@ public class QuestionDialog extends JDialog {
 
         this.correctIndex = correctIndex;
 
-        // no closing by X / ESC
+        // Prevent accidental closing to force an answer
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 
         // ================= Root =================
@@ -111,7 +111,7 @@ public class QuestionDialog extends JDialog {
             }
         }
 
-        // 3 seconds then close
+        // // Delay closing to allow the player to see the correct answer - 3 seconds then closes
         Timer t = new Timer(3000, ev -> {
             ((Timer) ev.getSource()).stop();
             dispose();

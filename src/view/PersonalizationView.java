@@ -31,7 +31,7 @@ public class PersonalizationView extends BaseGameFrame {
 
     // theme.properties fallback (if GameAssets helpers are unavailable)
     private static final String THEME_FILE = "theme.properties";
-    private static final String KEY_BG = "backgroundKey"; // BG1 / BG2 / BG3
+    private static final String KEY_BG = "backgroundKey"; // BG1 / BG2 / BG3 options
 
     // UI state
     private final ButtonGroup accentGroup = new ButtonGroup();

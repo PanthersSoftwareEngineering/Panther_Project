@@ -7,7 +7,7 @@ import java.util.Random;
 
 /**
  * Board holds a 2D grid of Cells
- * Uses Factory Method via CellFactory, so Board does not "new MineCell()" etc directly
+ * Uses Factory Method of CellFactory, so Board does not make "new MineCell()" etc directly
  */
 public class Board {
 
