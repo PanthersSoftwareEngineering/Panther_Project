@@ -16,20 +16,16 @@ public class BackgroundMusic {
             return;
 
         try {
-            InputStream is = BackgroundMusic.class
-                    .getClassLoader()
-                    .getResourceAsStream(
-                    		"resources/audio/background song.wav"
-                    );
+        	InputStream is = BackgroundMusic.class.getResourceAsStream("/resources/audio/background song.wav");
+
 
             if (is == null) {
                 System.err.println("❌ WAV FILE NOT FOUND");
                 return;
             }
 
-            AudioInputStream audio =
-                    AudioSystem.getAudioInputStream(is);
-
+           	AudioInputStream audio = AudioSystem.getAudioInputStream(new java.io.BufferedInputStream(is));
+           	
             clip = AudioSystem.getClip();
             clip.open(audio);
 
